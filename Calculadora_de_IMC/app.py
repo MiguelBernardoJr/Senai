@@ -15,6 +15,28 @@ DEFAULT_IDADE = 43
 DEFAULT_PESO = 105.0
 DEFAULT_ALTURA_M = 1.85
 DEFAULT_ALTURA_CM = 185.0
+DEFAULT_ATIVIDADE = "Sedentário"
+
+# =========================================================
+# PERFIL COMPARTILHADO ENTRE FERRAMENTAS
+# Cada ferramenta lê e atualiza este perfil, para que dados
+# informados em uma tela já apareçam pré-preenchidos nas outras.
+# =========================================================
+if "perfil" not in st.session_state:
+    st.session_state.perfil = {
+        "peso": DEFAULT_PESO,
+        "altura_cm": DEFAULT_ALTURA_CM,
+        "idade": DEFAULT_IDADE,
+        "sexo": "Masculino",
+        "atividade": DEFAULT_ATIVIDADE,
+    }
+perfil = st.session_state.perfil
+
+ATIVIDADE_OPCOES = ["Sedentário", "Leve (1-3x/semana)", "Moderado (3-5x/semana)", "Intenso (6-7x/semana)", "Atleta (2x por dia)"]
+FATORES_ATIVIDADE = {
+    "Sedentário": 1.2, "Leve (1-3x/semana)": 1.375, "Moderado (3-5x/semana)": 1.55,
+    "Intenso (6-7x/semana)": 1.725, "Atleta (2x por dia)": 1.9,
+}
 
 # =========================================================
 # CSS CUSTOMIZADO — visual profissional "health-tech"
@@ -257,7 +279,6 @@ st.sidebar.markdown(
     """,
     unsafe_allow_html=True,
 )
-st.sidebar.caption("Projeto acadêmico — Python & Streamlit\nDesenvolvido por Miguel Bernardo Jr.")
 
 # =========================================================
 # FERRAMENTA 1 — CALCULADORA DE IMC
@@ -269,9 +290,12 @@ if opcao.startswith("⚖️"):
 
     col1, col2 = st.columns(2)
     with col1:
-        peso = st.number_input("Peso (kg)", min_value=1.0, max_value=400.0, value=DEFAULT_PESO, step=0.1)
+        peso = st.number_input("Peso (kg)", min_value=1.0, max_value=400.0, value=perfil["peso"], step=0.1, key="peso_imc")
     with col2:
-        altura = st.number_input("Altura (m)", min_value=0.5, max_value=2.5, value=DEFAULT_ALTURA_M, step=0.01)
+        altura = st.number_input("Altura (m)", min_value=0.5, max_value=2.5, value=round(perfil["altura_cm"] / 100, 2), step=0.01, key="altura_imc")
+
+    perfil["peso"] = peso
+    perfil["altura_cm"] = altura * 100
 
     imc = peso / (altura ** 2)
 
@@ -323,7 +347,8 @@ elif opcao.startswith("💧"):
     st.markdown("<h2>💧 Consumo de Água Diário</h2>", unsafe_allow_html=True)
     st.markdown('<p class="subtitle">Meta ideal de hidratação com base no seu peso (35ml por kg).</p>', unsafe_allow_html=True)
 
-    peso_agua = st.number_input("Peso (kg)", min_value=1.0, max_value=400.0, value=DEFAULT_PESO, step=0.1, key="peso_agua")
+    peso_agua = st.number_input("Peso (kg)", min_value=1.0, max_value=400.0, value=perfil["peso"], step=0.1, key="peso_agua")
+    perfil["peso"] = peso_agua
 
     ml_dia = peso_agua * 35
     litros_dia = ml_dia / 1000
@@ -361,40 +386,29 @@ elif opcao.startswith("🔥"):
 
     col1, col2, col3 = st.columns(3)
     with col1:
-        sexo = st.selectbox("Sexo biológico", ["Masculino", "Feminino"])
+        sexo = st.selectbox("Sexo biológico", ["Masculino", "Feminino"], index=["Masculino", "Feminino"].index(perfil["sexo"]), key="sexo_tmb")
     with col2:
-        idade = st.number_input("Idade", min_value=10, max_value=100, value=DEFAULT_IDADE, step=1)
+        idade = st.number_input("Idade", min_value=10, max_value=100, value=perfil["idade"], step=1, key="idade_tmb")
     with col3:
-        peso_tmb = st.number_input("Peso (kg)", min_value=1.0, max_value=400.0, value=DEFAULT_PESO, step=0.1, key="peso_tmb")
+        peso_tmb = st.number_input("Peso (kg)", min_value=1.0, max_value=400.0, value=perfil["peso"], step=0.1, key="peso_tmb")
 
-    altura_tmb = st.number_input("Altura (cm)", min_value=100.0, max_value=250.0, value=DEFAULT_ALTURA_CM, step=1.0)
+    altura_tmb = st.number_input("Altura (cm)", min_value=100.0, max_value=250.0, value=perfil["altura_cm"], step=1.0, key="altura_tmb")
 
     atividade = st.select_slider(
         "Nível de atividade física",
-        options=[
-            "Sedentário",
-            "Leve (1-3x/semana)",
-            "Moderado (3-5x/semana)",
-            "Intenso (6-7x/semana)",
-            "Atleta (2x por dia)",
-        ],
-        value="Moderado (3-5x/semana)",
+        options=ATIVIDADE_OPCOES,
+        value=perfil["atividade"],
+        key="atividade_tmb",
     )
 
-    fatores = {
-        "Sedentário": 1.2,
-        "Leve (1-3x/semana)": 1.375,
-        "Moderado (3-5x/semana)": 1.55,
-        "Intenso (6-7x/semana)": 1.725,
-        "Atleta (2x por dia)": 1.9,
-    }
+    perfil.update(sexo=sexo, idade=idade, peso=peso_tmb, altura_cm=altura_tmb, atividade=atividade)
 
     if sexo == "Masculino":
         tmb = (10 * peso_tmb) + (6.25 * altura_tmb) - (5 * idade) + 5
     else:
         tmb = (10 * peso_tmb) + (6.25 * altura_tmb) - (5 * idade) - 161
 
-    gasto_total = tmb * fatores[atividade]
+    gasto_total = tmb * FATORES_ATIVIDADE[atividade]
 
     c1, c2 = st.columns(2)
     with c1:
@@ -445,7 +459,8 @@ elif opcao.startswith("❤️"):
         unsafe_allow_html=True,
     )
 
-    idade_fc = st.number_input("Idade", min_value=10, max_value=100, value=DEFAULT_IDADE, step=1, key="idade_fc")
+    idade_fc = st.number_input("Idade", min_value=10, max_value=100, value=perfil["idade"], step=1, key="idade_fc")
+    perfil["idade"] = idade_fc
     fc_repouso = st.number_input(
         "Frequência cardíaca de repouso (bpm) — opcional",
         min_value=30, max_value=120, value=70, step=1,
@@ -504,8 +519,9 @@ elif opcao.startswith("📏"):
         unsafe_allow_html=True,
     )
 
-    sexo_bf = st.selectbox("Sexo biológico", ["Masculino", "Feminino"], key="sexo_bf")
-    altura_bf = st.number_input("Altura (cm)", min_value=100.0, max_value=250.0, value=DEFAULT_ALTURA_CM, step=1.0, key="altura_bf")
+    sexo_bf = st.selectbox("Sexo biológico", ["Masculino", "Feminino"], index=["Masculino", "Feminino"].index(perfil["sexo"]), key="sexo_bf")
+    altura_bf = st.number_input("Altura (cm)", min_value=100.0, max_value=250.0, value=perfil["altura_cm"], step=1.0, key="altura_bf")
+    perfil.update(sexo=sexo_bf, altura_cm=altura_bf)
     pescoco = st.number_input("Circunferência do pescoço (cm)", min_value=20.0, max_value=60.0, value=38.0, step=0.5)
     cintura = st.number_input("Circunferência da cintura (cm)", min_value=40.0, max_value=200.0, value=95.0, step=0.5)
 
@@ -564,18 +580,18 @@ elif opcao.startswith("🍽️"):
 
     col1, col2, col3 = st.columns(3)
     with col1:
-        sexo_m = st.selectbox("Sexo biológico", ["Masculino", "Feminino"], key="sexo_m")
+        sexo_m = st.selectbox("Sexo biológico", ["Masculino", "Feminino"], index=["Masculino", "Feminino"].index(perfil["sexo"]), key="sexo_m")
     with col2:
-        idade_m = st.number_input("Idade", min_value=10, max_value=100, value=DEFAULT_IDADE, step=1, key="idade_m")
+        idade_m = st.number_input("Idade", min_value=10, max_value=100, value=perfil["idade"], step=1, key="idade_m")
     with col3:
-        peso_m = st.number_input("Peso (kg)", min_value=1.0, max_value=400.0, value=DEFAULT_PESO, step=0.1, key="peso_m")
+        peso_m = st.number_input("Peso (kg)", min_value=1.0, max_value=400.0, value=perfil["peso"], step=0.1, key="peso_m")
 
-    altura_m = st.number_input("Altura (cm)", min_value=100.0, max_value=250.0, value=DEFAULT_ALTURA_CM, step=1.0, key="altura_m")
+    altura_m = st.number_input("Altura (cm)", min_value=100.0, max_value=250.0, value=perfil["altura_cm"], step=1.0, key="altura_m")
 
     atividade_m = st.select_slider(
         "Nível de atividade física",
-        options=["Sedentário", "Leve (1-3x/semana)", "Moderado (3-5x/semana)", "Intenso (6-7x/semana)", "Atleta (2x por dia)"],
-        value="Moderado (3-5x/semana)",
+        options=ATIVIDADE_OPCOES,
+        value=perfil["atividade"],
         key="atividade_m",
     )
 
@@ -585,17 +601,14 @@ elif opcao.startswith("🍽️"):
         horizontal=True,
     )
 
-    fatores_m = {
-        "Sedentário": 1.2, "Leve (1-3x/semana)": 1.375, "Moderado (3-5x/semana)": 1.55,
-        "Intenso (6-7x/semana)": 1.725, "Atleta (2x por dia)": 1.9,
-    }
+    perfil.update(sexo=sexo_m, idade=idade_m, peso=peso_m, altura_cm=altura_m, atividade=atividade_m)
 
     if sexo_m == "Masculino":
         tmb_m = (10 * peso_m) + (6.25 * altura_m) - (5 * idade_m) + 5
     else:
         tmb_m = (10 * peso_m) + (6.25 * altura_m) - (5 * idade_m) - 161
 
-    gasto_m = tmb_m * fatores_m[atividade_m]
+    gasto_m = tmb_m * FATORES_ATIVIDADE[atividade_m]
 
     ajuste = {"Emagrecimento": -500, "Manutenção": 0, "Ganho de massa": 400}
     calorias_alvo = gasto_m + ajuste[objetivo]
@@ -656,9 +669,11 @@ elif opcao.startswith("🎯"):
 
     col1, col2 = st.columns(2)
     with col1:
-        peso_atual = st.number_input("Peso atual (kg)", min_value=1.0, max_value=400.0, value=DEFAULT_PESO, step=0.1, key="peso_atual_meta")
+        peso_atual = st.number_input("Peso atual (kg)", min_value=1.0, max_value=400.0, value=perfil["peso"], step=0.1, key="peso_atual_meta")
     with col2:
-        peso_meta = st.number_input("Peso meta (kg)", min_value=1.0, max_value=400.0, value=DEFAULT_PESO - 10, step=0.1, key="peso_meta")
+        peso_meta = st.number_input("Peso meta (kg)", min_value=1.0, max_value=400.0, value=perfil["peso"] - 10, step=0.1, key="peso_meta")
+
+    perfil["peso"] = peso_atual
 
     ritmo = st.slider(
         "Ritmo semanal desejado (kg/semana)",
@@ -704,34 +719,32 @@ else:
 
     col1, col2, col3 = st.columns(3)
     with col1:
-        sexo_a = st.selectbox("Sexo biológico", ["Masculino", "Feminino"], key="sexo_a")
+        sexo_a = st.selectbox("Sexo biológico", ["Masculino", "Feminino"], index=["Masculino", "Feminino"].index(perfil["sexo"]), key="sexo_a")
     with col2:
-        idade_a = st.number_input("Idade", min_value=10, max_value=100, value=DEFAULT_IDADE, step=1, key="idade_a")
+        idade_a = st.number_input("Idade", min_value=10, max_value=100, value=perfil["idade"], step=1, key="idade_a")
     with col3:
-        peso_a = st.number_input("Peso (kg)", min_value=1.0, max_value=400.0, value=DEFAULT_PESO, step=0.1, key="peso_a")
+        peso_a = st.number_input("Peso (kg)", min_value=1.0, max_value=400.0, value=perfil["peso"], step=0.1, key="peso_a")
 
-    altura_a = st.number_input("Altura (cm)", min_value=100.0, max_value=250.0, value=DEFAULT_ALTURA_CM, step=1.0, key="altura_a")
+    altura_a = st.number_input("Altura (cm)", min_value=100.0, max_value=250.0, value=perfil["altura_cm"], step=1.0, key="altura_a")
 
     atividade_a = st.select_slider(
         "Nível de atividade física",
-        options=["Sedentário", "Leve (1-3x/semana)", "Moderado (3-5x/semana)", "Intenso (6-7x/semana)", "Atleta (2x por dia)"],
-        value="Moderado (3-5x/semana)",
+        options=ATIVIDADE_OPCOES,
+        value=perfil["atividade"],
         key="atividade_a",
     )
 
     objetivo_a = st.radio("Objetivo", ["Emagrecimento", "Manutenção", "Ganho de massa"], horizontal=True, key="objetivo_a")
 
-    fatores_a = {
-        "Sedentário": 1.2, "Leve (1-3x/semana)": 1.375, "Moderado (3-5x/semana)": 1.55,
-        "Intenso (6-7x/semana)": 1.725, "Atleta (2x por dia)": 1.9,
-    }
+    perfil.update(sexo=sexo_a, idade=idade_a, peso=peso_a, altura_cm=altura_a, atividade=atividade_a)
+
     if sexo_a == "Masculino":
         tmb_a = (10 * peso_a) + (6.25 * altura_a) - (5 * idade_a) + 5
     else:
         tmb_a = (10 * peso_a) + (6.25 * altura_a) - (5 * idade_a) - 161
 
     ajuste_a = {"Emagrecimento": -500, "Manutenção": 0, "Ganho de massa": 400}
-    calorias_dia = (tmb_a * fatores_a[atividade_a]) + ajuste_a[objetivo_a]
+    calorias_dia = (tmb_a * FATORES_ATIVIDADE[atividade_a]) + ajuste_a[objetivo_a]
 
     st.markdown(
         f"""

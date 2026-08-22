@@ -1,5 +1,4 @@
 import streamlit as st
-import math
 
 st.set_page_config(
     page_title="Ferramentas de Saúde",
@@ -7,14 +6,6 @@ st.set_page_config(
     layout="centered",
     initial_sidebar_state="expanded",
 )
-
-# =========================================================
-# DADOS PADRÃO DO USUÁRIO (editáveis por qualquer pessoa)
-# =========================================================
-DEFAULT_IDADE = 43
-DEFAULT_PESO = 105.0
-DEFAULT_ALTURA_M = 1.85
-DEFAULT_ALTURA_CM = 185.0
 
 # =========================================================
 # CSS CUSTOMIZADO — visual profissional "health-tech"
@@ -176,32 +167,6 @@ st.markdown(
             margin: 4px 0 14px 0;
         }
 
-        .author-footer {
-            text-align: center;
-            margin-top: 26px;
-            padding-top: 16px;
-            border-top: 1px solid #e2e8f0;
-            color: #94a3b8;
-            font-size: 0.82rem;
-        }
-        .author-footer a {
-            color: #0d9488;
-            text-decoration: none;
-            font-weight: 600;
-            margin: 0 8px;
-        }
-        .author-footer a:hover {
-            text-decoration: underline;
-        }
-
-        .macro-bar {
-            height: 30px;
-            border-radius: 8px;
-            display: flex;
-            overflow: hidden;
-            margin: 12px 0;
-        }
-
         footer {visibility: hidden;}
     </style>
     """,
@@ -216,7 +181,7 @@ st.markdown(
     <div class="hero">
         <div class="badge">SUITE DE SAÚDE &amp; PERFORMANCE</div>
         <h1>💪 Ferramentas de Saúde</h1>
-        <p>IMC, hidratação, gasto calórico, frequência cardíaca, composição corporal e macronutrientes — Python + Streamlit.</p>
+        <p>Calculadoras de IMC, hidratação, gasto calórico, frequência cardíaca e composição corporal — Python + Streamlit.</p>
     </div>
     """,
     unsafe_allow_html=True,
@@ -234,7 +199,6 @@ opcao = st.sidebar.radio(
         "🔥  Necessidade Calórica (TMB)",
         "❤️  Frequência Cardíaca de Treino",
         "📏  Percentual de Gordura Corporal",
-        "🍽️  Distribuição de Macronutrientes",
     ],
 )
 
@@ -263,13 +227,13 @@ st.sidebar.caption("Projeto acadêmico — Python & Streamlit\nDesenvolvido por 
 if opcao.startswith("⚖️"):
     st.markdown('<div class="card">', unsafe_allow_html=True)
     st.markdown("<h2>⚖️ Calculadora de IMC</h2>", unsafe_allow_html=True)
-    st.markdown('<p class="subtitle">Campos pré-preenchidos com dados padrão — altere livremente se outra pessoa for usar.</p>', unsafe_allow_html=True)
+    st.markdown('<p class="subtitle">Informe seu peso e altura para calcular o Índice de Massa Corporal.</p>', unsafe_allow_html=True)
 
     col1, col2 = st.columns(2)
     with col1:
-        peso = st.number_input("Peso (kg)", min_value=1.0, max_value=400.0, value=DEFAULT_PESO, step=0.1)
+        peso = st.number_input("Peso (kg)", min_value=1.0, max_value=400.0, value=70.0, step=0.1)
     with col2:
-        altura = st.number_input("Altura (m)", min_value=0.5, max_value=2.5, value=DEFAULT_ALTURA_M, step=0.01)
+        altura = st.number_input("Altura (m)", min_value=0.5, max_value=2.5, value=1.70, step=0.01)
 
     imc = peso / (altura ** 2)
 
@@ -321,7 +285,7 @@ elif opcao.startswith("💧"):
     st.markdown("<h2>💧 Consumo de Água Diário</h2>", unsafe_allow_html=True)
     st.markdown('<p class="subtitle">Meta ideal de hidratação com base no seu peso (35ml por kg).</p>', unsafe_allow_html=True)
 
-    peso_agua = st.number_input("Peso (kg)", min_value=1.0, max_value=400.0, value=DEFAULT_PESO, step=0.1, key="peso_agua")
+    peso_agua = st.number_input("Peso (kg)", min_value=1.0, max_value=400.0, value=70.0, step=0.1, key="peso_agua")
 
     ml_dia = peso_agua * 35
     litros_dia = ml_dia / 1000
@@ -353,7 +317,7 @@ elif opcao.startswith("🔥"):
     st.markdown('<div class="card">', unsafe_allow_html=True)
     st.markdown("<h2>🔥 Necessidade Calórica Diária (TMB)</h2>", unsafe_allow_html=True)
     st.markdown(
-        '<p class="subtitle">Fórmula de Mifflin-St Jeor. Atualiza automaticamente conforme você ajusta os campos.</p>',
+        '<p class="subtitle">Calcula sua Taxa Metabólica Basal (fórmula de Mifflin-St Jeor) e o gasto calórico total. Atualiza automaticamente.</p>',
         unsafe_allow_html=True,
     )
 
@@ -361,11 +325,11 @@ elif opcao.startswith("🔥"):
     with col1:
         sexo = st.selectbox("Sexo biológico", ["Masculino", "Feminino"])
     with col2:
-        idade = st.number_input("Idade", min_value=10, max_value=100, value=DEFAULT_IDADE, step=1)
+        idade = st.number_input("Idade", min_value=10, max_value=100, value=30, step=1)
     with col3:
-        peso_tmb = st.number_input("Peso (kg)", min_value=1.0, max_value=400.0, value=DEFAULT_PESO, step=0.1, key="peso_tmb")
+        peso_tmb = st.number_input("Peso (kg)", min_value=1.0, max_value=400.0, value=70.0, step=0.1, key="peso_tmb")
 
-    altura_tmb = st.number_input("Altura (cm)", min_value=100.0, max_value=250.0, value=DEFAULT_ALTURA_CM, step=1.0)
+    altura_tmb = st.number_input("Altura (cm)", min_value=100.0, max_value=250.0, value=170.0, step=1.0)
 
     atividade = st.select_slider(
         "Nível de atividade física",
@@ -443,7 +407,7 @@ elif opcao.startswith("❤️"):
         unsafe_allow_html=True,
     )
 
-    idade_fc = st.number_input("Idade", min_value=10, max_value=100, value=DEFAULT_IDADE, step=1, key="idade_fc")
+    idade_fc = st.number_input("Idade", min_value=10, max_value=100, value=30, step=1, key="idade_fc")
     fc_repouso = st.number_input(
         "Frequência cardíaca de repouso (bpm) — opcional",
         min_value=30, max_value=120, value=70, step=1,
@@ -494,7 +458,7 @@ elif opcao.startswith("❤️"):
 # =========================================================
 # FERRAMENTA 5 — PERCENTUAL DE GORDURA CORPORAL (MÉTODO NAVY)
 # =========================================================
-elif opcao.startswith("📏"):
+else:
     st.markdown('<div class="card">', unsafe_allow_html=True)
     st.markdown("<h2>📏 Percentual de Gordura Corporal</h2>", unsafe_allow_html=True)
     st.markdown(
@@ -503,13 +467,15 @@ elif opcao.startswith("📏"):
     )
 
     sexo_bf = st.selectbox("Sexo biológico", ["Masculino", "Feminino"], key="sexo_bf")
-    altura_bf = st.number_input("Altura (cm)", min_value=100.0, max_value=250.0, value=DEFAULT_ALTURA_CM, step=1.0, key="altura_bf")
+    altura_bf = st.number_input("Altura (cm)", min_value=100.0, max_value=250.0, value=170.0, step=1.0, key="altura_bf")
     pescoco = st.number_input("Circunferência do pescoço (cm)", min_value=20.0, max_value=60.0, value=38.0, step=0.5)
-    cintura = st.number_input("Circunferência da cintura (cm)", min_value=40.0, max_value=200.0, value=95.0, step=0.5)
+    cintura = st.number_input("Circunferência da cintura (cm)", min_value=40.0, max_value=200.0, value=85.0, step=0.5)
 
     quadril = None
     if sexo_bf == "Feminino":
         quadril = st.number_input("Circunferência do quadril (cm)", min_value=40.0, max_value=200.0, value=95.0, step=0.5)
+
+    import math
 
     try:
         if sexo_bf == "Masculino":
@@ -549,108 +515,8 @@ elif opcao.startswith("📏"):
     st.info("Método de estimativa por circunferências (US Navy). Precisão inferior a métodos clínicos como bioimpedância ou DEXA.")
     st.markdown("</div>", unsafe_allow_html=True)
 
-# =========================================================
-# FERRAMENTA 6 — DISTRIBUIÇÃO DE MACRONUTRIENTES
-# =========================================================
-else:
-    st.markdown('<div class="card">', unsafe_allow_html=True)
-    st.markdown("<h2>🍽️ Distribuição de Macronutrientes</h2>", unsafe_allow_html=True)
-    st.markdown(
-        '<p class="subtitle">Calcula gramas de proteína, carboidrato e gordura a partir do seu gasto calórico e objetivo.</p>',
-        unsafe_allow_html=True,
-    )
-
-    col1, col2, col3 = st.columns(3)
-    with col1:
-        sexo_m = st.selectbox("Sexo biológico", ["Masculino", "Feminino"], key="sexo_m")
-    with col2:
-        idade_m = st.number_input("Idade", min_value=10, max_value=100, value=DEFAULT_IDADE, step=1, key="idade_m")
-    with col3:
-        peso_m = st.number_input("Peso (kg)", min_value=1.0, max_value=400.0, value=DEFAULT_PESO, step=0.1, key="peso_m")
-
-    altura_m = st.number_input("Altura (cm)", min_value=100.0, max_value=250.0, value=DEFAULT_ALTURA_CM, step=1.0, key="altura_m")
-
-    atividade_m = st.select_slider(
-        "Nível de atividade física",
-        options=["Sedentário", "Leve (1-3x/semana)", "Moderado (3-5x/semana)", "Intenso (6-7x/semana)", "Atleta (2x por dia)"],
-        value="Moderado (3-5x/semana)",
-        key="atividade_m",
-    )
-
-    objetivo = st.radio(
-        "Objetivo",
-        ["Emagrecimento", "Manutenção", "Ganho de massa"],
-        horizontal=True,
-    )
-
-    fatores_m = {
-        "Sedentário": 1.2, "Leve (1-3x/semana)": 1.375, "Moderado (3-5x/semana)": 1.55,
-        "Intenso (6-7x/semana)": 1.725, "Atleta (2x por dia)": 1.9,
-    }
-
-    if sexo_m == "Masculino":
-        tmb_m = (10 * peso_m) + (6.25 * altura_m) - (5 * idade_m) + 5
-    else:
-        tmb_m = (10 * peso_m) + (6.25 * altura_m) - (5 * idade_m) - 161
-
-    gasto_m = tmb_m * fatores_m[atividade_m]
-
-    ajuste = {"Emagrecimento": -500, "Manutenção": 0, "Ganho de massa": 400}
-    calorias_alvo = gasto_m + ajuste[objetivo]
-
-    # Distribuição de macros por objetivo (% de calorias)
-    percentuais = {
-        "Emagrecimento": {"Proteína": 0.40, "Carboidrato": 0.30, "Gordura": 0.30},
-        "Manutenção": {"Proteína": 0.30, "Carboidrato": 0.40, "Gordura": 0.30},
-        "Ganho de massa": {"Proteína": 0.30, "Carboidrato": 0.50, "Gordura": 0.20},
-    }[objetivo]
-
-    prot_g = (calorias_alvo * percentuais["Proteína"]) / 4
-    carb_g = (calorias_alvo * percentuais["Carboidrato"]) / 4
-    gord_g = (calorias_alvo * percentuais["Gordura"]) / 9
-
-    st.markdown(
-        f"""
-        <div class="result-box result-warn">
-            <div>
-                <div class="result-label">Meta calórica diária</div>
-                <div class="result-value">{calorias_alvo:.0f} kcal</div>
-            </div>
-            <div style="font-size:1.6rem;">🎯</div>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-
-    st.markdown(
-        f"""
-        <div class="macro-bar">
-            <div style="width:{percentuais['Proteína']*100}%; background:#0d9488;"></div>
-            <div style="width:{percentuais['Carboidrato']*100}%; background:#fbbf24;"></div>
-            <div style="width:{percentuais['Gordura']*100}%; background:#f87171;"></div>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-
-    m1, m2, m3 = st.columns(3)
-    m1.metric("🥩 Proteína", f"{prot_g:.0f} g", f"{percentuais['Proteína']*100:.0f}% kcal")
-    m2.metric("🍞 Carboidrato", f"{carb_g:.0f} g", f"{percentuais['Carboidrato']*100:.0f}% kcal")
-    m3.metric("🥑 Gordura", f"{gord_g:.0f} g", f"{percentuais['Gordura']*100:.0f}% kcal")
-
-    st.info("Distribuição estimada com base em diretrizes gerais de nutrição esportiva. Ajustes finos exigem acompanhamento de nutricionista.")
-    st.markdown("</div>", unsafe_allow_html=True)
-
-# =========================================================
-# RODAPÉ — AUTOR / CONTATO
-# =========================================================
 st.markdown(
-    """
-    <div class="author-footer">
-        Desenvolvido por <strong>Miguel Bernardo Jr.</strong> · Python + Streamlit<br>
-        <a href="https://www.linkedin.com/in/miguelbernardojr/" target="_blank">🔗 LinkedIn</a>
-        <a href="#" target="_blank">💻 GitHub (aguardando link)</a>
-    </div>
-    """,
+    "<div style='text-align:center; color:#94a3b8; font-size:0.8rem; margin-top:20px;'>"
+    "Desenvolvido com Python + Streamlit</div>",
     unsafe_allow_html=True,
 )

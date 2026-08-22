@@ -649,7 +649,7 @@ st.markdown(
     <div class="author-footer">
         Desenvolvido por <strong>Miguel Bernardo Jr.</strong> · Python + Streamlit<br>
         <a href="https://www.linkedin.com/in/miguelbernardojr/" target="_blank">🔗 LinkedIn</a>
-        <a href="#" target="_blank">💻 GitHub (aguardando link)</a>
+        <a href="https://github.com/MiguelBernardoJr" target="_blank">💻 GitHub</a>
     </div>
     """,
     unsafe_allow_html=True,

@@ -55,6 +55,9 @@ st.markdown(
         }
 
         .hero {
+            position: sticky;
+            top: 0;
+            z-index: 999;
             padding: 34px 30px 40px 30px;
             border-radius: 0 0 24px 24px;
             margin: -1rem -1rem 24px -1rem;

@@ -235,8 +235,6 @@ opcao = st.sidebar.radio(
         "❤️  Frequência Cardíaca de Treino",
         "📏  Percentual de Gordura Corporal",
         "🍽️  Distribuição de Macronutrientes",
-        "🎯  Meta de Peso",
-        "🍱  Proposta de Alimentação",
     ],
 )
 
@@ -554,7 +552,7 @@ elif opcao.startswith("📏"):
 # =========================================================
 # FERRAMENTA 6 — DISTRIBUIÇÃO DE MACRONUTRIENTES
 # =========================================================
-elif opcao.startswith("🍽️"):
+else:
     st.markdown('<div class="card">', unsafe_allow_html=True)
     st.markdown("<h2>🍽️ Distribuição de Macronutrientes</h2>", unsafe_allow_html=True)
     st.markdown(
@@ -641,135 +639,6 @@ elif opcao.startswith("🍽️"):
     m3.metric("🥑 Gordura", f"{gord_g:.0f} g", f"{percentuais['Gordura']*100:.0f}% kcal")
 
     st.info("Distribuição estimada com base em diretrizes gerais de nutrição esportiva. Ajustes finos exigem acompanhamento de nutricionista.")
-    st.markdown("</div>", unsafe_allow_html=True)
-
-# =========================================================
-# FERRAMENTA 7 — META DE PESO
-# =========================================================
-elif opcao.startswith("🎯"):
-    st.markdown('<div class="card">', unsafe_allow_html=True)
-    st.markdown("<h2>🎯 Meta de Peso</h2>", unsafe_allow_html=True)
-    st.markdown(
-        '<p class="subtitle">Defina seu peso atual, sua meta e um ritmo saudável de progressão para estimar o prazo.</p>',
-        unsafe_allow_html=True,
-    )
-
-    col1, col2 = st.columns(2)
-    with col1:
-        peso_atual = st.number_input("Peso atual (kg)", min_value=1.0, max_value=400.0, value=DEFAULT_PESO, step=0.1, key="peso_atual_meta")
-    with col2:
-        peso_meta = st.number_input("Peso meta (kg)", min_value=1.0, max_value=400.0, value=DEFAULT_PESO - 10, step=0.1, key="peso_meta")
-
-    ritmo = st.slider(
-        "Ritmo semanal desejado (kg/semana)",
-        min_value=0.25, max_value=1.0, value=0.5, step=0.05,
-        help="Faixa considerada segura pela literatura: 0,25 a 1kg por semana."
-    )
-
-    diferenca = peso_meta - peso_atual
-
-    if abs(diferenca) < 0.1:
-        st.success("Você já está no peso meta! 🎉")
-    else:
-        direcao = "emagrecimento" if diferenca < 0 else "ganho de peso"
-        semanas = math.ceil(abs(diferenca) / ritmo)
-        meses = semanas / 4.345
-
-        c1, c2, c3 = st.columns(3)
-        c1.metric("Diferença", f"{abs(diferenca):.1f} kg", direcao.capitalize())
-        c2.metric("Prazo estimado", f"{semanas} semanas", f"~{meses:.1f} meses")
-        c3.metric("Ritmo", f"{ritmo:.2f} kg/sem", "")
-
-        # Projeção de progresso
-        pesos_projetados = [peso_atual + (diferenca * i / semanas) for i in range(semanas + 1)]
-        st.markdown("**Curva de progressão projetada:**")
-        st.line_chart(pesos_projetados)
-
-        if ritmo > 1.0:
-            st.warning("Ritmos acima de 1kg/semana por longos períodos costumam ser insustentáveis e podem indicar perda de massa magra, não apenas gordura.")
-        st.info("Estimativa linear simplificada. O progresso real varia — platôs são normais e não significam falha.")
-
-    st.markdown("</div>", unsafe_allow_html=True)
-
-# =========================================================
-# FERRAMENTA 8 — PROPOSTA DE ALIMENTAÇÃO
-# =========================================================
-else:
-    st.markdown('<div class="card">', unsafe_allow_html=True)
-    st.markdown("<h2>🍱 Proposta de Alimentação</h2>", unsafe_allow_html=True)
-    st.markdown(
-        '<p class="subtitle">Cardápio ilustrativo distribuído em 5 refeições, com base no seu gasto calórico estimado.</p>',
-        unsafe_allow_html=True,
-    )
-
-    col1, col2, col3 = st.columns(3)
-    with col1:
-        sexo_a = st.selectbox("Sexo biológico", ["Masculino", "Feminino"], key="sexo_a")
-    with col2:
-        idade_a = st.number_input("Idade", min_value=10, max_value=100, value=DEFAULT_IDADE, step=1, key="idade_a")
-    with col3:
-        peso_a = st.number_input("Peso (kg)", min_value=1.0, max_value=400.0, value=DEFAULT_PESO, step=0.1, key="peso_a")
-
-    altura_a = st.number_input("Altura (cm)", min_value=100.0, max_value=250.0, value=DEFAULT_ALTURA_CM, step=1.0, key="altura_a")
-
-    atividade_a = st.select_slider(
-        "Nível de atividade física",
-        options=["Sedentário", "Leve (1-3x/semana)", "Moderado (3-5x/semana)", "Intenso (6-7x/semana)", "Atleta (2x por dia)"],
-        value="Moderado (3-5x/semana)",
-        key="atividade_a",
-    )
-
-    objetivo_a = st.radio("Objetivo", ["Emagrecimento", "Manutenção", "Ganho de massa"], horizontal=True, key="objetivo_a")
-
-    fatores_a = {
-        "Sedentário": 1.2, "Leve (1-3x/semana)": 1.375, "Moderado (3-5x/semana)": 1.55,
-        "Intenso (6-7x/semana)": 1.725, "Atleta (2x por dia)": 1.9,
-    }
-    if sexo_a == "Masculino":
-        tmb_a = (10 * peso_a) + (6.25 * altura_a) - (5 * idade_a) + 5
-    else:
-        tmb_a = (10 * peso_a) + (6.25 * altura_a) - (5 * idade_a) - 161
-
-    ajuste_a = {"Emagrecimento": -500, "Manutenção": 0, "Ganho de massa": 400}
-    calorias_dia = (tmb_a * fatores_a[atividade_a]) + ajuste_a[objetivo_a]
-
-    st.markdown(
-        f"""
-        <div class="result-box result-good">
-            <div>
-                <div class="result-label">Meta calórica diária</div>
-                <div class="result-value">{calorias_dia:.0f} kcal</div>
-            </div>
-            <div style="font-size:1.6rem;">🍽️</div>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-
-    refeicoes = [
-        ("☀️ Café da manhã", 0.25, "Ovos mexidos ou omelete, pão integral, fruta e café/chá sem açúcar"),
-        ("🍛 Almoço", 0.30, "Proteína magra (frango, peixe ou carne), arroz integral e feijão, legumes e salada crua"),
-        ("🍎 Lanche da tarde", 0.15, "Iogurte natural, oleaginosas (castanhas/amêndoas) e uma fruta"),
-        ("🌙 Jantar", 0.25, "Proteína magra, vegetais variados e uma porção menor de carboidrato complexo"),
-        ("🥛 Ceia", 0.05, "Leite ou iogurte, ou chá — refeição leve antes de dormir"),
-    ]
-
-    st.markdown("**Distribuição sugerida ao longo do dia:**")
-    for nome, pct, sugestao in refeicoes:
-        kcal_refeicao = calorias_dia * pct
-        st.markdown(
-            f"""
-            <div style="display:flex; justify-content:space-between; align-items:baseline; margin-top:14px;">
-                <span style="font-weight:700; color:#0f172a;">{nome}</span>
-                <span style="color:#0d9488; font-weight:700; font-size:0.9rem;">{kcal_refeicao:.0f} kcal ({int(pct*100)}%)</span>
-            </div>
-            <div style="color:#64748b; font-size:0.85rem; margin-top:2px;">{sugestao}</div>
-            """,
-            unsafe_allow_html=True,
-        )
-
-    st.markdown("<br>", unsafe_allow_html=True)
-    st.info("Cardápio genérico e ilustrativo, baseado em diretrizes gerais de alimentação equilibrada. Não substitui avaliação de nutricionista, que considera exames, restrições e preferências individuais.")
     st.markdown("</div>", unsafe_allow_html=True)
 
 # =========================================================

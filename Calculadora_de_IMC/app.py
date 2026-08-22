@@ -126,6 +126,47 @@ st.markdown(
             letter-spacing: 0.05em;
         }
 
+        .school-badge {
+            width: 46px;
+            height: 46px;
+            border-radius: 10px;
+            background: linear-gradient(135deg, #0d9488, #0f766e);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 800;
+            font-size: 1.1rem;
+            color: white;
+            flex-shrink: 0;
+        }
+        .school-card {
+            display: flex;
+            gap: 12px;
+            align-items: flex-start;
+            background: rgba(255,255,255,0.04);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 12px;
+            padding: 14px;
+            margin-top: 10px;
+        }
+        .school-card .school-name {
+            font-weight: 700;
+            font-size: 0.88rem;
+            color: #f1f5f9 !important;
+            margin-bottom: 2px;
+        }
+        .school-card .school-info {
+            font-size: 0.76rem;
+            color: #94a3b8 !important;
+            line-height: 1.4;
+        }
+
+        .zone-bar {
+            height: 10px;
+            border-radius: 6px;
+            margin: 4px 0 14px 0;
+        }
+
         footer {visibility: hidden;}
     </style>
     """,
@@ -140,7 +181,7 @@ st.markdown(
     <div class="hero">
         <div class="badge">SUITE DE SAÚDE &amp; PERFORMANCE</div>
         <h1>💪 Ferramentas de Saúde</h1>
-        <p>Calculadoras de IMC, hidratação diária e necessidade calórica — construídas em Python + Streamlit.</p>
+        <p>Calculadoras de IMC, hidratação, gasto calórico, frequência cardíaca e composição corporal — Python + Streamlit.</p>
     </div>
     """,
     unsafe_allow_html=True,
@@ -156,9 +197,28 @@ opcao = st.sidebar.radio(
         "⚖️  Calculadora de IMC",
         "💧  Consumo de Água Diário",
         "🔥  Necessidade Calórica (TMB)",
+        "❤️  Frequência Cardíaca de Treino",
+        "📏  Percentual de Gordura Corporal",
     ],
 )
+
 st.sidebar.markdown("---")
+st.sidebar.markdown(
+    """
+    <div class="school-card">
+        <div class="school-badge">SP</div>
+        <div>
+            <div class="school-name">SENAI Presidente Prudente<br>"Santo Paschoal Crepaldi"</div>
+            <div class="school-info">
+                Rua Roberto Mange, 151 – Jardim Marupiara<br>
+                Presidente Prudente/SP – CEP 19060-030<br>
+                (18) 3902-8500 · sp.senai.br
+            </div>
+        </div>
+    </div>
+    """,
+    unsafe_allow_html=True,
+)
 st.sidebar.caption("Projeto acadêmico — Python & Streamlit\nDesenvolvido por Miguel Bernardo Jr.")
 
 # =========================================================
@@ -175,47 +235,46 @@ if opcao.startswith("⚖️"):
     with col2:
         altura = st.number_input("Altura (m)", min_value=0.5, max_value=2.5, value=1.70, step=0.01)
 
-    if st.button("Calcular IMC", key="btn_imc"):
-        imc = peso / (altura ** 2)
+    imc = peso / (altura ** 2)
 
-        if imc < 18.5:
-            classificacao, estilo, emoji = "Abaixo do peso", "result-warn", "🟠"
-        elif imc < 25:
-            classificacao, estilo, emoji = "Peso normal", "result-good", "🟢"
-        elif imc < 30:
-            classificacao, estilo, emoji = "Sobrepeso", "result-warn", "🟠"
-        else:
-            classificacao, estilo, emoji = "Obesidade", "result-bad", "🔴"
+    if imc < 18.5:
+        classificacao, estilo, emoji = "Abaixo do peso", "result-warn", "🟠"
+    elif imc < 25:
+        classificacao, estilo, emoji = "Peso normal", "result-good", "🟢"
+    elif imc < 30:
+        classificacao, estilo, emoji = "Sobrepeso", "result-warn", "🟠"
+    else:
+        classificacao, estilo, emoji = "Obesidade", "result-bad", "🔴"
 
-        st.markdown(
-            f"""
-            <div class="result-box {estilo}">
-                <div>
-                    <div class="result-label">Seu IMC</div>
-                    <div class="result-value">{imc:.2f}</div>
-                </div>
-                <div style="text-align:right;">
-                    <div style="font-size:1.6rem;">{emoji}</div>
-                    <div style="font-weight:700; color:#0f172a;">{classificacao}</div>
-                </div>
+    st.markdown(
+        f"""
+        <div class="result-box {estilo}">
+            <div>
+                <div class="result-label">Seu IMC</div>
+                <div class="result-value">{imc:.2f}</div>
             </div>
-            """,
-            unsafe_allow_html=True,
-        )
+            <div style="text-align:right;">
+                <div style="font-size:1.6rem;">{emoji}</div>
+                <div style="font-weight:700; color:#0f172a;">{classificacao}</div>
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
 
-        with st.expander("📊 Ver tabela de referência"):
-            st.markdown(
-                """
-                | IMC | Classificação |
-                |---|---|
-                | Abaixo de 18,5 | Abaixo do peso |
-                | 18,5 – 24,9 | Peso normal |
-                | 25,0 – 29,9 | Sobrepeso |
-                | 30,0 – 34,9 | Obesidade Grau I |
-                | 35,0 – 39,9 | Obesidade Grau II |
-                | Acima de 40,0 | Obesidade Grau III |
-                """
-            )
+    with st.expander("📊 Ver tabela de referência"):
+        st.markdown(
+            """
+            | IMC | Classificação |
+            |---|---|
+            | Abaixo de 18,5 | Abaixo do peso |
+            | 18,5 – 24,9 | Peso normal |
+            | 25,0 – 29,9 | Sobrepeso |
+            | 30,0 – 34,9 | Obesidade Grau I |
+            | 35,0 – 39,9 | Obesidade Grau II |
+            | Acima de 40,0 | Obesidade Grau III |
+            """
+        )
     st.markdown("</div>", unsafe_allow_html=True)
 
 # =========================================================
@@ -228,38 +287,37 @@ elif opcao.startswith("💧"):
 
     peso_agua = st.number_input("Peso (kg)", min_value=1.0, max_value=400.0, value=70.0, step=0.1, key="peso_agua")
 
-    if st.button("Calcular Meta de Água", key="btn_agua"):
-        ml_dia = peso_agua * 35
-        litros_dia = ml_dia / 1000
-        copos_250ml = ml_dia / 250
+    ml_dia = peso_agua * 35
+    litros_dia = ml_dia / 1000
+    copos_250ml = ml_dia / 250
 
-        st.markdown(
-            f"""
-            <div class="result-box result-good">
-                <div>
-                    <div class="result-label">Meta diária</div>
-                    <div class="result-value">{litros_dia:.2f} L</div>
-                </div>
-                <div style="text-align:right;">
-                    <div style="font-size:1.6rem;">🥤</div>
-                    <div style="font-weight:700; color:#0f172a;">{copos_250ml:.1f} copos (250ml)</div>
-                </div>
+    st.markdown(
+        f"""
+        <div class="result-box result-good">
+            <div>
+                <div class="result-label">Meta diária</div>
+                <div class="result-value">{litros_dia:.2f} L</div>
             </div>
-            """,
-            unsafe_allow_html=True,
-        )
-        st.progress(min(litros_dia / 5, 1.0))
-        st.info("Estimativa geral. Necessidades reais variam conforme clima, atividade física e saúde individual.")
+            <div style="text-align:right;">
+                <div style="font-size:1.6rem;">🥤</div>
+                <div style="font-weight:700; color:#0f172a;">{copos_250ml:.1f} copos (250ml)</div>
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+    st.progress(min(litros_dia / 5, 1.0))
+    st.info("Estimativa geral. Necessidades reais variam conforme clima, atividade física e saúde individual.")
     st.markdown("</div>", unsafe_allow_html=True)
 
 # =========================================================
-# FERRAMENTA 3 — NECESSIDADE CALÓRICA DIÁRIA (TMB)
+# FERRAMENTA 3 — NECESSIDADE CALÓRICA DIÁRIA (TMB) — LIVE
 # =========================================================
-else:
+elif opcao.startswith("🔥"):
     st.markdown('<div class="card">', unsafe_allow_html=True)
     st.markdown("<h2>🔥 Necessidade Calórica Diária (TMB)</h2>", unsafe_allow_html=True)
     st.markdown(
-        '<p class="subtitle">Calcula sua Taxa Metabólica Basal (fórmula de Mifflin-St Jeor) e o gasto calórico total conforme seu nível de atividade.</p>',
+        '<p class="subtitle">Calcula sua Taxa Metabólica Basal (fórmula de Mifflin-St Jeor) e o gasto calórico total. Atualiza automaticamente.</p>',
         unsafe_allow_html=True,
     )
 
@@ -293,50 +351,168 @@ else:
         "Atleta (2x por dia)": 1.9,
     }
 
-    if st.button("Calcular Necessidade Calórica", key="btn_tmb"):
-        if sexo == "Masculino":
-            tmb = (10 * peso_tmb) + (6.25 * altura_tmb) - (5 * idade) + 5
+    if sexo == "Masculino":
+        tmb = (10 * peso_tmb) + (6.25 * altura_tmb) - (5 * idade) + 5
+    else:
+        tmb = (10 * peso_tmb) + (6.25 * altura_tmb) - (5 * idade) - 161
+
+    gasto_total = tmb * fatores[atividade]
+
+    c1, c2 = st.columns(2)
+    with c1:
+        st.markdown(
+            f"""
+            <div class="result-box result-good">
+                <div>
+                    <div class="result-label">TMB (repouso)</div>
+                    <div class="result-value">{tmb:.0f}</div>
+                </div>
+                <div style="font-size:1.6rem;">🛌</div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+    with c2:
+        st.markdown(
+            f"""
+            <div class="result-box result-warn">
+                <div>
+                    <div class="result-label">Gasto total / dia</div>
+                    <div class="result-value">{gasto_total:.0f}</div>
+                </div>
+                <div style="font-size:1.6rem;">🔥</div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+    st.markdown("<br>", unsafe_allow_html=True)
+    st.markdown("**Sugestões de meta calórica:**")
+    cc1, cc2, cc3 = st.columns(3)
+    cc1.metric("Emagrecimento", f"{gasto_total - 500:.0f} kcal", "-500 kcal")
+    cc2.metric("Manutenção", f"{gasto_total:.0f} kcal", "0 kcal")
+    cc3.metric("Ganho de massa", f"{gasto_total + 400:.0f} kcal", "+400 kcal")
+
+    st.info("Valores calculados via fórmula de Mifflin-St Jeor. Não substitui orientação de nutricionista ou médico.")
+    st.markdown("</div>", unsafe_allow_html=True)
+
+# =========================================================
+# FERRAMENTA 4 — FREQUÊNCIA CARDÍACA DE TREINO
+# =========================================================
+elif opcao.startswith("❤️"):
+    st.markdown('<div class="card">', unsafe_allow_html=True)
+    st.markdown("<h2>❤️ Frequência Cardíaca de Treino</h2>", unsafe_allow_html=True)
+    st.markdown(
+        '<p class="subtitle">Calcula sua FC máxima estimada e as zonas de intensidade de treino.</p>',
+        unsafe_allow_html=True,
+    )
+
+    idade_fc = st.number_input("Idade", min_value=10, max_value=100, value=30, step=1, key="idade_fc")
+    fc_repouso = st.number_input(
+        "Frequência cardíaca de repouso (bpm) — opcional",
+        min_value=30, max_value=120, value=70, step=1,
+        help="Meça ao acordar, antes de levantar da cama, para maior precisão."
+    )
+
+    fc_max = 220 - idade_fc
+
+    st.markdown(
+        f"""
+        <div class="result-box result-bad">
+            <div>
+                <div class="result-label">FC Máxima estimada</div>
+                <div class="result-value">{fc_max} bpm</div>
+            </div>
+            <div style="font-size:1.6rem;">❤️</div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    zonas = [
+        ("Zona 1 — Aquecimento", 0.50, 0.60, "#93c5fd"),
+        ("Zona 2 — Queima de gordura", 0.60, 0.70, "#5eead4"),
+        ("Zona 3 — Cardio (aeróbico)", 0.70, 0.80, "#fbbf24"),
+        ("Zona 4 — Intenso (anaeróbico)", 0.80, 0.90, "#fb923c"),
+        ("Zona 5 — Máximo esforço", 0.90, 1.00, "#f87171"),
+    ]
+
+    st.markdown("**Zonas de treino (% da FC máxima):**")
+    for nome, pmin, pmax, cor in zonas:
+        bpm_min = round(fc_max * pmin)
+        bpm_max = round(fc_max * pmax)
+        st.markdown(
+            f"""
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-top:10px;">
+                <span style="font-weight:600; color:#0f172a; font-size:0.9rem;">{nome}</span>
+                <span style="color:#475569; font-size:0.85rem;">{bpm_min}–{bpm_max} bpm</span>
+            </div>
+            <div class="zone-bar" style="background: linear-gradient(90deg, {cor} {int(pmin*100)}%, {cor} {int(pmax*100)}%); width:100%; opacity:0.85;"></div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+    st.info("Fórmula simplificada (220 - idade). Métodos como Karvonen (usando FC de repouso) são mais precisos para atletas.")
+    st.markdown("</div>", unsafe_allow_html=True)
+
+# =========================================================
+# FERRAMENTA 5 — PERCENTUAL DE GORDURA CORPORAL (MÉTODO NAVY)
+# =========================================================
+else:
+    st.markdown('<div class="card">', unsafe_allow_html=True)
+    st.markdown("<h2>📏 Percentual de Gordura Corporal</h2>", unsafe_allow_html=True)
+    st.markdown(
+        '<p class="subtitle">Estimativa via método da Marinha dos EUA (medidas de circunferência corporal).</p>',
+        unsafe_allow_html=True,
+    )
+
+    sexo_bf = st.selectbox("Sexo biológico", ["Masculino", "Feminino"], key="sexo_bf")
+    altura_bf = st.number_input("Altura (cm)", min_value=100.0, max_value=250.0, value=170.0, step=1.0, key="altura_bf")
+    pescoco = st.number_input("Circunferência do pescoço (cm)", min_value=20.0, max_value=60.0, value=38.0, step=0.5)
+    cintura = st.number_input("Circunferência da cintura (cm)", min_value=40.0, max_value=200.0, value=85.0, step=0.5)
+
+    quadril = None
+    if sexo_bf == "Feminino":
+        quadril = st.number_input("Circunferência do quadril (cm)", min_value=40.0, max_value=200.0, value=95.0, step=0.5)
+
+    import math
+
+    try:
+        if sexo_bf == "Masculino":
+            bf = 495 / (1.0324 - 0.19077 * math.log10(cintura - pescoco) + 0.15456 * math.log10(altura_bf)) - 450
         else:
-            tmb = (10 * peso_tmb) + (6.25 * altura_tmb) - (5 * idade) - 161
+            bf = 495 / (1.29579 - 0.35004 * math.log10(cintura + quadril - pescoco) + 0.22100 * math.log10(altura_bf)) - 450
 
-        gasto_total = tmb * fatores[atividade]
+        if bf < 0 or bf > 60 or math.isnan(bf):
+            raise ValueError
 
-        c1, c2 = st.columns(2)
-        with c1:
-            st.markdown(
-                f"""
-                <div class="result-box result-good">
-                    <div>
-                        <div class="result-label">TMB (repouso)</div>
-                        <div class="result-value">{tmb:.0f}</div>
-                    </div>
-                    <div style="font-size:1.6rem;">🛌</div>
+        if sexo_bf == "Masculino":
+            faixas = [(6, "Essencial"), (14, "Atlético"), (18, "Fitness"), (25, "Aceitável"), (100, "Elevado")]
+        else:
+            faixas = [(14, "Essencial"), (21, "Atlético"), (25, "Fitness"), (32, "Aceitável"), (100, "Elevado")]
+
+        categoria = next(nome for limite, nome in faixas if bf < limite)
+        estilo = "result-good" if categoria in ("Atlético", "Fitness") else "result-warn"
+
+        st.markdown(
+            f"""
+            <div class="result-box {estilo}">
+                <div>
+                    <div class="result-label">Gordura corporal estimada</div>
+                    <div class="result-value">{bf:.1f}%</div>
                 </div>
-                """,
-                unsafe_allow_html=True,
-            )
-        with c2:
-            st.markdown(
-                f"""
-                <div class="result-box result-warn">
-                    <div>
-                        <div class="result-label">Gasto total / dia</div>
-                        <div class="result-value">{gasto_total:.0f}</div>
-                    </div>
-                    <div style="font-size:1.6rem;">🔥</div>
+                <div style="text-align:right;">
+                    <div style="font-size:1.6rem;">📏</div>
+                    <div style="font-weight:700; color:#0f172a;">{categoria}</div>
                 </div>
-                """,
-                unsafe_allow_html=True,
-            )
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+    except (ValueError, ZeroDivisionError):
+        st.warning("Confira as medidas informadas — a cintura precisa ser maior que o pescoço para o cálculo funcionar.")
 
-        st.markdown("<br>", unsafe_allow_html=True)
-        st.markdown("**Sugestões de meta calórica:**")
-        cc1, cc2, cc3 = st.columns(3)
-        cc1.metric("Emagrecimento", f"{gasto_total - 500:.0f} kcal", "-500 kcal")
-        cc2.metric("Manutenção", f"{gasto_total:.0f} kcal", "0 kcal")
-        cc3.metric("Ganho de massa", f"{gasto_total + 400:.0f} kcal", "+400 kcal")
-
-        st.info("Valores calculados via fórmula de Mifflin-St Jeor. Não substitui orientação de nutricionista ou médico.")
+    st.info("Método de estimativa por circunferências (US Navy). Precisão inferior a métodos clínicos como bioimpedância ou DEXA.")
     st.markdown("</div>", unsafe_allow_html=True)
 
 st.markdown(

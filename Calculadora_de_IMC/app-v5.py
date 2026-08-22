@@ -54,18 +54,6 @@ st.markdown(
             background: linear-gradient(180deg, #0f172a 0%, #0f172a 260px, #f4f6fb 260px, #f4f6fb 100%);
         }
 
-        /* Faz o container principal do Streamlit ser o elemento que rola,
-           para que o cabeçalho "sticky" funcione de verdade em todas as telas. */
-        section.main, [data-testid="stMain"] {
-            overflow: hidden !important;
-        }
-        section.main > div.block-container,
-        [data-testid="stMain"] > div.block-container {
-            height: 100vh;
-            overflow-y: auto;
-            padding-top: 1rem;
-        }
-
         .hero {
             position: sticky;
             top: 0;

@@ -4,7 +4,6 @@ st.set_page_config(page_title="Ferramentas de Saúde", page_icon="💧", layout=
 
 st.title("🧮 Ferramentas de Saúde")
 st.caption("Calculadora de IMC e Meta de Hidratação Diária — Python + Streamlit")
-st.caption("by Miguel Bernardo")
 
 opcao = st.sidebar.radio(
     "Escolha a ferramenta:",

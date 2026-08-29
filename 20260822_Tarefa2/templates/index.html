@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Reconhecimento de Imagens - Cadastro de Classes</title>
+    <!-- Nosso arquivo de estilos -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+
+    <div class="container">
+
+        <h1>📸 Reconhecimento de Imagens</h1>
+        <p class="subtitulo">Fase 2 — Criação de classes, upload e treinamento do modelo</p>
+
+        <!-- ============================================= -->
+        <!-- FORMULÁRIO: criar/alimentar uma classe         -->
+        <!-- ============================================= -->
+        <div class="cartao">
+            <h2>Enviar imagens para uma classe</h2>
+
+            <form id="formulario-upload">
+                <label for="nome-classe">Nome da classe (ex: gato, cachorro):</label>
+                <input type="text" id="nome-classe" name="classe" placeholder="Digite o nome da classe" required>
+
+                <label for="imagens">Selecione uma ou várias imagens:</label>
+                <input type="file" id="imagens" name="imagens" accept="image/*" multiple required>
+
+                <button type="submit">Enviar</button>
+            </form>
+
+            <!-- Aqui aparecem mensagens de sucesso ou erro após o envio -->
+            <div id="mensagem-status"></div>
+        </div>
+
+        <!-- ============================================= -->
+        <!-- LISTA: classes já criadas                      -->
+        <!-- ============================================= -->
+        <div class="cartao">
+            <h2>Classes cadastradas</h2>
+
+            <table id="tabela-classes">
+                <thead>
+                    <tr>
+                        <th>Classe</th>
+                        <th>Quantidade de imagens</th>
+                    </tr>
+                </thead>
+                <tbody id="corpo-tabela-classes">
+                    <!-- Preenchido automaticamente pelo script.js -->
+                </tbody>
+            </table>
+
+            <p id="nenhuma-classe" style="display: none;">
+                Nenhuma classe cadastrada ainda. Envie imagens acima para criar a primeira.
+            </p>
+        </div>
+
+        <!-- ============================================= -->
+        <!-- TREINAMENTO: botão + resultado                 -->
+        <!-- ============================================= -->
+        <div class="cartao">
+            <h2>Treinar o modelo</h2>
+            <p class="ajuda-texto">
+                Recomendado: pelo menos 2 classes, cada uma com 5 ou mais imagens.
+                O treinamento pode levar alguns minutos, dependendo do seu computador.
+            </p>
+
+            <button id="botao-treinar" type="button">Treinar Modelo</button>
+
+            <!-- Aqui aparece "Treinando..." e depois o resultado -->
+            <div id="mensagem-treinamento"></div>
+        </div>
+
+    </div>
+
+    <!-- Nosso arquivo de lógica em JavaScript -->
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>

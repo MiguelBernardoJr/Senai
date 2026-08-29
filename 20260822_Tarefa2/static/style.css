@@ -1,0 +1,159 @@
+/* style.css
+   Estilo simples e organizado para a Fase 1.
+   Não precisa ser bonito, só limpo e legível. */
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    font-family: Arial, Helvetica, sans-serif;
+    background-color: #f2f2f2;
+    color: #222;
+    margin: 0;
+    padding: 20px;
+}
+
+.container {
+    max-width: 700px;
+    margin: 0 auto;
+}
+
+h1 {
+    margin-bottom: 0;
+}
+
+.subtitulo {
+    color: #666;
+    margin-top: 4px;
+    margin-bottom: 24px;
+}
+
+/* Cada bloco (formulário, tabela) fica dentro de um "cartão" */
+.cartao {
+    background-color: #ffffff;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 20px;
+}
+
+.cartao h2 {
+    margin-top: 0;
+    font-size: 18px;
+}
+
+label {
+    display: block;
+    margin-top: 12px;
+    margin-bottom: 4px;
+    font-weight: bold;
+    font-size: 14px;
+}
+
+input[type="text"],
+input[type="file"] {
+    width: 100%;
+    padding: 8px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-size: 14px;
+}
+
+button {
+    margin-top: 16px;
+    padding: 10px 20px;
+    background-color: #2c5780;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    font-size: 14px;
+    cursor: pointer;
+}
+
+button:hover {
+    background-color: #1a3a5c;
+}
+
+#mensagem-status {
+    margin-top: 14px;
+    padding: 10px;
+    border-radius: 4px;
+    font-size: 14px;
+    display: none;
+}
+
+#mensagem-status.sucesso {
+    display: block;
+    background-color: #e2f5e9;
+    color: #1d7a45;
+    border: 1px solid #b6e3c8;
+}
+
+#mensagem-status.erro {
+    display: block;
+    background-color: #fbeaea;
+    color: #a52a2a;
+    border: 1px solid #f0c2c2;
+}
+
+/* Estilos reaproveitados também na caixa de mensagem do treinamento */
+#mensagem-treinamento {
+    margin-top: 14px;
+    padding: 10px;
+    border-radius: 4px;
+    font-size: 14px;
+    display: none;
+}
+
+#mensagem-treinamento.sucesso,
+#mensagem-status.sucesso {
+    display: block;
+    background-color: #e2f5e9;
+    color: #1d7a45;
+    border: 1px solid #b6e3c8;
+}
+
+#mensagem-treinamento.erro {
+    display: block;
+    background-color: #fbeaea;
+    color: #a52a2a;
+    border: 1px solid #f0c2c2;
+}
+
+#mensagem-treinamento.info,
+#mensagem-status.info {
+    display: block;
+    background-color: #eaf2fb;
+    color: #2c5780;
+    border: 1px solid #c2d9f0;
+}
+
+.ajuda-texto {
+    color: #666;
+    font-size: 13px;
+    margin-top: -4px;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 10px;
+}
+
+th, td {
+    text-align: left;
+    padding: 8px;
+    border-bottom: 1px solid #eee;
+    font-size: 14px;
+}
+
+th {
+    background-color: #f7f7f7;
+}
+
+#nenhuma-classe {
+    color: #777;
+    font-style: italic;
+    font-size: 14px;
+}

@@ -1,5 +1,5 @@
 /* style.css
-   Estilo simples e organizado para a Fase 1.
+   Estilo simples e organizado do projeto.
    Não precisa ser bonito, só limpo e legível. */
 
 * {
@@ -29,7 +29,7 @@ h1 {
     margin-bottom: 24px;
 }
 
-/* Cada bloco (formulário, tabela) fica dentro de um "cartão" */
+/* Cada bloco (formulário, tabela, dashboard) fica dentro de um "cartão" */
 .cartao {
     background-color: #ffffff;
     border: 1px solid #ddd;
@@ -73,6 +73,15 @@ button {
 
 button:hover {
     background-color: #1a3a5c;
+}
+
+button:disabled {
+    background-color: #9aa9b6;
+    cursor: not-allowed;
+}
+
+a {
+    text-decoration: none;
 }
 
 #mensagem-status {
@@ -155,5 +164,42 @@ th {
 #nenhuma-classe {
     color: #777;
     font-style: italic;
+    font-size: 14px;
+}
+
+/* ===================================================== */
+/* Estilos da página de TESTE (Fase 3) — dashboard        */
+/* ===================================================== */
+
+/* Pré-visualização da imagem escolhida pelo usuário. */
+#preview-imagem {
+    display: block;
+    max-width: 100%;
+    max-height: 300px;
+    margin-top: 12px;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+}
+
+/* Texto de destaque com a classe vencedora e sua porcentagem. */
+.resultado-final {
+    font-size: 18px;
+    font-weight: bold;
+    color: #2c5780;
+    background-color: #eaf2fb;
+    border: 1px solid #c2d9f0;
+    border-radius: 6px;
+    padding: 12px;
+}
+
+/* Limita a altura do gráfico para não ficar gigante em telas grandes. */
+#grafico-porcentagens {
+    max-height: 350px;
+}
+
+/* Mensagem de status da página de teste (avisos, "Analisando...").
+   As cores de sucesso/erro/info vêm das regras #mensagem-status.sucesso,
+   .erro e .info já definidas mais acima neste arquivo. */
+#mensagem-status {
     font-size: 14px;
 }

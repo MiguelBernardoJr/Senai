@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Testar Modelo — Reconhecimento de Imagens</title>
+
+    <!-- Nosso arquivo de estilo (o mesmo usado na página inicial). -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+
+    <!-- Chart.js via CDN: biblioteca usada para desenhar o gráfico
+         de barras com as porcentagens de cada classe. -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+</head>
+<body>
+
+    <div class="container">
+        <h1>Testar Modelo</h1>
+        <p><a href="{{ url_for('pagina_inicial') }}">&larr; Voltar para a página inicial</a></p>
+
+        <!-- Bloco onde o usuário escolhe a imagem para analisar. -->
+        <section class="cartao">
+            <h2>Enviar imagem para análise</h2>
+
+            <label for="input-imagem">Escolha uma imagem:</label>
+            <input type="file" id="input-imagem" accept="image/*">
+
+            <button id="botao-analisar" type="button">Analisar Imagem</button>
+
+            <!-- Área onde mostramos mensagens de erro ou avisos. -->
+            <p id="mensagem-status"></p>
+        </section>
+
+        <!-- Pré-visualização da imagem escolhida pelo usuário. -->
+        <section class="cartao" id="bloco-preview" style="display:none;">
+            <h2>Imagem enviada</h2>
+            <img id="preview-imagem" alt="Pré-visualização da imagem enviada">
+        </section>
+
+        <!-- Dashboard com o resultado da previsão. Começa escondido
+             e só aparece depois que a análise termina. -->
+        <section class="cartao" id="bloco-resultado" style="display:none;">
+            <h2>Resultado</h2>
+
+            <p id="texto-resultado-final" class="resultado-final"></p>
+
+            <!-- O gráfico de barras é desenhado dentro deste <canvas>. -->
+            <canvas id="grafico-porcentagens"></canvas>
+        </section>
+    </div>
+
+    <!-- Nosso código JavaScript, específico desta página. -->
+    <script src="{{ url_for('static', filename='testar.js') }}"></script>
+</body>
+</html>

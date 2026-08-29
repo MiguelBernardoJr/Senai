@@ -1,0 +1,17 @@
+> python -m venv venv
+> .\venv\Scripts\activate
+> pip install streamlit
+
+
+chave do professor, nao consegui conectar no:
+https://groq.com/company
+
+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
+
+
+
+pip install -r requirements.txt
+export GROQ_API_KEY="sua_chave"
+streamlit run app.py
+
+

@@ -3,8 +3,11 @@
 // Lógica de front-end:
 // - Envia o formulário (nome da classe + imagens) para o backend.
 // - Atualiza a lista de classes na tela.
-// - NOVO na Fase 2: aciona o treinamento do modelo e mostra o
-//   resultado (acurácia) quando terminar.
+// - Aciona o treinamento do modelo e mostra o resultado (acurácia)
+//   quando terminar.
+// - FASE 4: mostra, de forma clara e colorida, as mensagens de erro
+//   que o backend devolve (ex: classe com poucas imagens, arquivo
+//   inválido, etc.), além de indicar quando uma ação está em andamento.
 // ---------------------------------------------------------
 
 // Elementos da Fase 1.
@@ -12,14 +15,16 @@ const formulario = document.getElementById("formulario-upload");
 const mensagemStatus = document.getElementById("mensagem-status");
 const corpoTabela = document.getElementById("corpo-tabela-classes");
 const nenhumaClasseTexto = document.getElementById("nenhuma-classe");
+const botaoEnviar = formulario.querySelector("button[type='submit']");
 
-// Elementos novos da Fase 2 (treinamento).
+// Elementos da Fase 2 (treinamento).
 const botaoTreinar = document.getElementById("botao-treinar");
 const mensagemTreinamento = document.getElementById("mensagem-treinamento");
 
 // ---------------------------------------------------------
-// Função: mostra uma mensagem de sucesso ou erro em uma caixinha
-// qualquer da tela (reaproveitada pelo upload e pelo treinamento).
+// Função: mostra uma mensagem de sucesso, erro ou aviso em uma
+// caixinha qualquer da tela (reaproveitada pelo upload e pelo
+// treinamento), aplicando a cor certa através da classe CSS.
 // ---------------------------------------------------------
 function mostrarMensagem(elemento, texto, tipo) {
     // tipo pode ser "sucesso", "erro" ou "info"
@@ -60,7 +65,7 @@ async function atualizarListaDeClasses() {
 
     } catch (erro) {
         console.error("Erro ao buscar classes:", erro);
-        mostrarMensagem(mensagemStatus, "Não foi possível carregar a lista de classes.", "erro");
+        mostrarMensagem(mensagemStatus, "Não foi possível carregar a lista de classes. Verifique se o app.py está rodando.", "erro");
     }
 }
 
@@ -71,6 +76,9 @@ formulario.addEventListener("submit", async function (evento) {
     evento.preventDefault();
 
     const dadosDoFormulario = new FormData(formulario);
+
+    botaoEnviar.disabled = true;
+    mostrarMensagem(mensagemStatus, "Enviando imagens...", "info");
 
     try {
         const resposta = await fetch("/upload", {
@@ -90,12 +98,14 @@ formulario.addEventListener("submit", async function (evento) {
 
     } catch (erro) {
         console.error("Erro ao enviar formulário:", erro);
-        mostrarMensagem(mensagemStatus, "Erro de conexão com o servidor.", "erro");
+        mostrarMensagem(mensagemStatus, "Erro de conexão com o servidor. Verifique se o app.py está rodando.", "erro");
+    } finally {
+        botaoEnviar.disabled = false;
     }
 });
 
 // ---------------------------------------------------------
-// NOVO (Fase 2): evento de clique no botão "Treinar Modelo".
+// Evento de clique no botão "Treinar Modelo".
 // ---------------------------------------------------------
 botaoTreinar.addEventListener("click", async function () {
     // Desabilita o botão enquanto treina, para evitar cliques duplicados.
@@ -123,6 +133,8 @@ botaoTreinar.addEventListener("click", async function () {
 
             mostrarMensagem(mensagemTreinamento, texto, "sucesso");
         } else {
+            // O backend explica exatamente o motivo do erro (ex: falta
+            // de classes, classe com poucas imagens, etc.).
             mostrarMensagem(
                 mensagemTreinamento,
                 resultado.mensagem || "Erro ao treinar o modelo.",
@@ -134,7 +146,7 @@ botaoTreinar.addEventListener("click", async function () {
         console.error("Erro ao treinar modelo:", erro);
         mostrarMensagem(
             mensagemTreinamento,
-            "Erro de conexão com o servidor durante o treinamento.",
+            "Erro de conexão com o servidor durante o treinamento. Verifique se o app.py está rodando.",
             "erro"
         );
     } finally {

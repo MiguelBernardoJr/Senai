@@ -26,11 +26,17 @@ st.set_page_config(
 )
 
 MODELOS_DISPONIVEIS = [
-    "llama-3.3-70b-versatile",
-    "llama-3.1-8b-instant",
     "openai/gpt-oss-120b",
     "openai/gpt-oss-20b",
+    "openai/gpt-oss-safeguard-20b",
     "gemma2-9b-it",
+    "llama-3.3-70b-versatile",
+    "llama-3.1-8b-instant",
+    "qwen/qwen3.6-27b",
+    "qwen/qwen3.8-27b",
+    "groq/compound",
+    "groq/compound-mini",
+    "canopylabs/orpheus-v1-english",
 ]
 
 DEFAULT_SYSTEM_PROMPT = "Você é um assistente útil, direto e educado. Responda em português do Brasil, salvo pedido contrário."

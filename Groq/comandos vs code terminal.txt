@@ -6,12 +6,18 @@
 chave do professor, nao consegui conectar no:
 https://groq.com/company
 
-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
-
+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
 
 
 pip install -r requirements.txt
 export GROQ_API_KEY="sua_chave"
+
+
+pip install python-dotenv
+pip install groq
+
+
+
 streamlit run app.py
 
 

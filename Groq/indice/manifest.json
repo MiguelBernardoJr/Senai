@@ -1,0 +1,16 @@
+{
+  "modelo_embedding": "intfloat/multilingual-e5-small",
+  "dimensao": 384,
+  "chunk_size": 1000,
+  "chunk_overlap": 150,
+  "total_chunks": 6,
+  "atualizado_em": "2026-09-05T08:50:37-03:00",
+  "documentos": [
+    {
+      "arquivo": "documento.pdf",
+      "caminho": "C:\\Users\\mmb.junior\\Documents\\GitHub\\Senai\\Groq-Rag\\documentos\\documento.pdf",
+      "sha256": "14b0e44b45771ecb8222f13033e32faafd54237f2785282af132edc71a2dd43d",
+      "chunks": 6
+    }
+  ]
+}

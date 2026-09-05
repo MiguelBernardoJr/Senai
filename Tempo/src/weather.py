@@ -10,7 +10,7 @@ import logging
 
 import requests
 
-from src.schemas import City, CurrentWeather, WeatherContext
+from src.schemas import City, CurrentWeather, DailyTemperature, WeatherContext
 
 logger = logging.getLogger(__name__)
 
@@ -101,6 +101,37 @@ def to_context(city: City, raw: dict) -> WeatherContext:
         rain_chance_today=daily["precipitation_probability_max"][0],
         uv_max_today=uv_max_today,
     )
+
+
+def parse_daily_series(raw: dict) -> list[DailyTemperature]:
+    """Converte o bloco `daily` de `/v1/forecast` (com `past_days`/`forecast_days`) em uma série."""
+    daily = raw["daily"]
+    return [
+        DailyTemperature(date=day, temp_max=temp_max, temp_min=temp_min)
+        for day, temp_max, temp_min in zip(
+            daily["time"], daily["temperature_2m_max"], daily["temperature_2m_min"]
+        )
+    ]
+
+
+def get_daily_history(city: City, past_days: int = 7, forecast_days: int = 8) -> list[DailyTemperature]:
+    """Série diária de máx/mín: `past_days` dias reais anteriores + hoje + `forecast_days - 1`
+    dias de previsão futura. Usado só para o gráfico de variação — não afeta `get_forecast()`."""
+    params = {
+        "latitude": city.latitude,
+        "longitude": city.longitude,
+        "daily": "temperature_2m_max,temperature_2m_min",
+        "timezone": "auto",
+        "past_days": past_days,
+        "forecast_days": forecast_days,
+    }
+    try:
+        response = requests.get(FORECAST_URL, params=params, timeout=TIMEOUT_SECONDS)
+        response.raise_for_status()
+    except requests.RequestException:
+        logger.exception("Falha ao consultar histórico diário da Open-Meteo para %s", city.name)
+        raise
+    return parse_daily_series(response.json())
 
 
 def geocode_city(name: str, count: int = 5) -> list[City]:

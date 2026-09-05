@@ -1,7 +1,7 @@
 # MEMÓRIA DO PROJETO — Clima-Groq
 
 > Estado atual, decisões vigentes e pendências. **Sempre anexado.**
-> Última atualização: 05/09/2026 · Fase: **F6 concluída — v1 completa, todas as fases do plano de execução entregues**
+> Última atualização: 05/09/2026 · Fase: **Pós-v1 — histórico com SQLite + gráfico + fundo dinâmico entregues**
 
 ## Situação
 
@@ -25,9 +25,17 @@ Projeto iniciado dentro da própria pasta `Tempo/` (sem subpasta `clima-groq/` �
 - `README.md` criado (setup, testes, estrutura, limitações, atribuição).
 - `.gitignore` corrigido: `BKP/` **não deve** ser ignorado (é histórico versionado, conforme seção 3 da especificação) — removido do `.gitignore` (erro meu na F1, corrigido aqui).
 
+**Pós-v1 entregue (05/09/2026):**
+- `src/history.py` (SQLite, `clima_historico.db` na raiz, **gitignored**): tabela `pesquisas` (log de cada busca com cidade/clima/`buscado_em`) e tabela `historico_diario` (série diária de máx/mín por cidade, `UNIQUE(cidade, pais, data)`). `update_history()` busca 7 dias passados + hoje + 7 futuros via `weather.get_daily_history()` (mesmo endpoint da Open-Meteo, parâmetro `past_days`/`forecast_days` — **sem precisar de outra API**) e reescreve as linhas a cada busca (assim os dias futuros viram passado com dado real quando a data chega). Só simula valores (`_simulate_series`, RNG determinístico por cidade) se a API falhar **e** não houver nenhum histórico salvo ainda — nunca sobrescreve dado real por falha passageira de rede. Testado com dado real: 15 dias retornados para Pirapozinho (29/08 a 12/09/2026).
+- `src/theme.py`: fundo de página em CSS puro (gradiente por categoria de `weather_code` — sol/nublado/névoa/chuva/neve/tempestade, dia e noite), com chuva/tempestade animadas (listras de chuva + flash de raio via `@keyframes`). Sem imagem externa, sem custo de rede.
+- `app.py`: gráfico `st.line_chart` (máxima/mínima por data) logo após os cards de roupa/comida/sugestões; fundo dinâmico injetado via `st.markdown(unsafe_allow_html=True)` assim que uma cidade é carregada.
+- 10 novos testes (`test_history.py`, `test_theme.py`, + `parse_daily_series` em `test_weather.py`) — 31 testes no total, todos passando, sem rede.
+- Isso **reverte parcialmente D-07** ("sem banco de dados na v1") — registrado como D-10 abaixo, a pedido explícito do usuário.
+
 ## Pendência residual
 
-- [ ] Este diretório ainda **não é um repositório git** (`git init` não foi rodado). Antes de decidir GitHub público/privado (pendência já registrada acima), inicializar o repo e confirmar que `.env` está de fato ignorado no primeiro `git status` antes de qualquer `git add`.
+- [x] ~~Este diretório ainda não é um repositório git~~ — **resolvido em 05/09/2026**: o commit foi feito, mas não como repo próprio de `Tempo/` — ele foi incorporado ao repositório `Senai` (pasta pai, `C:\Users\mmb.junior\Documents\GitHub\Senai`, remote `github.com/MiguelBernardoJr/Senai`), onde `Groq`/`Groq-Rag` também já viviam como subpastas simples. **Isso invalida D-09 como estava escrito** — corrigido abaixo.
+- [ ] O `push` do commit (`cd70099`, "Adiciona projeto Clima-Groq (pasta Tempo) v1: F1 a F6") para o GitHub ainda não foi feito — o ambiente de execução não consegue autenticar interativamente. O usuário disse que vai fazer o push manualmente (GitHub Desktop ou terminal próprio). **Os arquivos novos desta sessão (history.py, theme.py, etc.) ainda não têm nem commit local — precisam ser commitados também.**
 
 ## Decisões vigentes
 
@@ -41,7 +49,8 @@ Projeto iniciado dentro da própria pasta `Tempo/` (sem subpasta `clima-groq/` �
 | D-06 | App precisa funcionar **sem LLM** (regras determinísticas) antes de plugar o modelo. | 05/09/2026 |
 | D-07 | Sem banco de dados na v1. Estado só em `st.session_state`. | 05/09/2026 |
 | D-08 | Chaves Groq/OpenRouter existentes **não serão rotacionadas** — são chaves de estudo, risco aceito pelo usuário. | 05/09/2026 |
-| D-09 | Pasta do projeto = a própria `Tempo/` (raiz do repo), não uma subpasta `clima-groq/`. | 05/09/2026 |
+| D-09 | Pasta do projeto = a própria `Tempo/` (raiz **do código**, não uma subpasta `clima-groq/`). **Correção 05/09/2026**: o repositório git, porém, é o da pasta pai `Senai/` (`github.com/MiguelBernardoJr/Senai`) — `Tempo/` é só uma subpasta dele, igual `Groq/` e `Groq-Rag/`, não um repo próprio. | 05/09/2026 |
+| D-10 | Adicionado SQLite (`src/history.py`) para log de pesquisas e histórico diário de temperatura (gráfico de 7 dias passados + 7 futuros). **Reverte parcialmente D-07** ("sem banco de dados na v1") — pedido explícito do usuário, pós-v1. | 05/09/2026 |
 
 ## Pendências
 

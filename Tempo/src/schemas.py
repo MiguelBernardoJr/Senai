@@ -34,6 +34,12 @@ class WeatherContext(BaseModel):
     uv_max_today: float | None = None
 
 
+class DailyTemperature(BaseModel):
+    date: str
+    temp_max: float
+    temp_min: float
+
+
 class Recommendation(BaseModel):
     resumo: str
     roupa: str

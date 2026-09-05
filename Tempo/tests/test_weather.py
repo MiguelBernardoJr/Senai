@@ -1,7 +1,7 @@
 """Testes de parsing do módulo weather. JSON fixo, sem chamada de rede."""
 
 from src.schemas import City
-from src.weather import describe_weather_code, parse_geocode_results, to_context
+from src.weather import describe_weather_code, parse_daily_series, parse_geocode_results, to_context
 
 GEOCODE_RESPONSE = {
     "results": [
@@ -112,3 +112,21 @@ def test_to_context_handles_missing_uv_index():
     ctx = to_context(city, raw)
 
     assert ctx.uv_max_today is None
+
+
+def test_parse_daily_series_returns_ordered_temperatures():
+    raw = {
+        "daily": {
+            "time": ["2026-08-29", "2026-08-30", "2026-08-31"],
+            "temperature_2m_max": [34.5, 34.8, 34.5],
+            "temperature_2m_min": [23.6, 21.8, 21.7],
+        }
+    }
+
+    series = parse_daily_series(raw)
+
+    assert len(series) == 3
+    assert series[0].date == "2026-08-29"
+    assert series[0].temp_max == 34.5
+    assert series[0].temp_min == 23.6
+    assert series[-1].date == "2026-08-31"

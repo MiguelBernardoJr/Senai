@@ -4,11 +4,14 @@ from __future__ import annotations
 
 import logging
 
+import pandas as pd
 import streamlit as st
 
+from src import history
 from src.config import load_settings
 from src.llm import ask_free, ask_structured
 from src.schemas import City, WeatherContext
+from src.theme import background_css
 from src.weather import geocode_city, get_forecast
 
 logging.basicConfig(level=logging.INFO)
@@ -17,6 +20,7 @@ logger = logging.getLogger(__name__)
 st.set_page_config(page_title="Clima-Groq", page_icon="🌤️", layout="centered")
 
 settings = load_settings()
+history.init_db()
 
 
 @st.cache_data(ttl=900, show_spinner=False)
@@ -51,6 +55,10 @@ def _load_weather(city: City) -> None:
 
     with st.spinner("Gerando recomendação..."):
         recommendation, used_offline = ask_structured(ctx, settings)
+
+    history.save_search(ctx)
+    with st.spinner("Atualizando histórico de temperatura..."):
+        history.update_history(ctx)
 
     st.session_state.context = ctx
     st.session_state.recommendation = recommendation
@@ -103,6 +111,8 @@ ctx: WeatherContext | None = st.session_state.context
 rec = st.session_state.recommendation
 
 if ctx and rec:
+    st.markdown(background_css(ctx.current.weather_code, ctx.current.is_day), unsafe_allow_html=True)
+
     st.subheader(_location_label(ctx.city))
 
     cols = st.columns(4)
@@ -134,6 +144,17 @@ if ctx and rec:
     if rec.alerta:
         st.warning(f"⚠️ {rec.alerta}")
 
+    st.markdown("#### 📈 Variação de temperatura (7 dias passados + 7 futuros)")
+    series = history.get_temperature_series(ctx.city)
+    if series:
+        df = pd.DataFrame(series).rename(columns={"temp_max": "Máxima", "temp_min": "Mínima"})
+        df["data"] = pd.to_datetime(df["data"])
+        st.line_chart(df.set_index("data")[["Máxima", "Mínima"]])
+        if any(item["origem"] == "simulado" for item in series):
+            st.caption("Sem conexão com a Open-Meteo no primeiro registro — parte da série é estimada.")
+    else:
+        st.caption("Ainda sem histórico salvo para esta cidade.")
+
     st.markdown("#### 💬 Pergunte qualquer coisa sobre o dia")
     for message in st.session_state.messages:
         with st.chat_message(message["role"]):
@@ -146,10 +167,10 @@ if ctx and rec:
             st.write(question)
         with st.chat_message("assistant"):
             with st.spinner("Pensando..."):
-                history = [
+                chat_history = [
                     {"role": m["role"], "content": m["content"]} for m in st.session_state.messages[:-1]
                 ]
-                answer, used_offline_chat = ask_free(ctx, question, history, settings)
+                answer, used_offline_chat = ask_free(ctx, question, chat_history, settings)
                 st.write(answer)
                 if used_offline_chat:
                     st.caption("Modo offline — resposta gerada localmente.")

@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import base64
 import uuid
+from html import escape
 from pathlib import Path
 
 import folium
@@ -27,6 +28,7 @@ from config import (
     ORGAOS,
     PASTA_FOTOS,
     SEVERIDADES,
+    texto_campo,
 )
 
 
@@ -95,8 +97,20 @@ def salvar_foto(arquivo_enviado) -> str | None:
     return f"data/fotos/{nome_arquivo}"
 
 
+def texto_html(valor, padrao: str = "") -> str:
+    """Campo pronto para ser interpolado em HTML: limpo e com escape.
+
+    O relato, a referencia e o bairro sao digitados pelo cidadao e vao direto
+    para dentro do popup do mapa. Sem escape, um `<img src=x onerror=...>` no
+    campo de referencia executa no navegador de quem esta atendendo o chamado.
+    Quem monta HTML com dado de terceiro passa por aqui, sempre.
+    """
+    return escape(texto_campo(valor, padrao), quote=True)
+
+
 def _foto_em_base64(caminho_relativo: str | None, largura: int = 220) -> str:
     """Converte a foto em <img> embutido, para aparecer dentro do popup."""
+    caminho_relativo = texto_campo(caminho_relativo)
     if not caminho_relativo:
         return ""
     caminho = Path(__file__).parent / caminho_relativo
@@ -145,8 +159,8 @@ def texto_despacho(linha: pd.Series) -> str:
         + (f" (COBRADE {cobrade})" if cobrade else ""),
         f"Gravidade...: {linha['severidade']}",
         f"Registrado..: {data}",
-        f"Local.......: {linha.get('referencia') or 'nao informado'}"
-        f" - Bairro {linha.get('bairro') or 'nao informado'}",
+        f"Local.......: {texto_campo(linha.get('referencia'), 'nao informado')}"
+        f" - Bairro {texto_campo(linha.get('bairro'), 'nao informado')}",
         f"Coordenadas.: {linha['latitude']}, {linha['longitude']}{precisao}",
         f"Mapa........: {link_google_maps(linha['latitude'], linha['longitude'])}",
     ]
@@ -159,9 +173,9 @@ def texto_despacho(linha: pd.Series) -> str:
         partes.append(f"Confirmado por mais {confirmacoes} cidadao(s).")
 
     partes += [
-        f"Relato......: {linha.get('descricao') or '-'}",
-        f"Solicitante.: {linha.get('autor') or 'Anonimo'}"
-        f" / {linha.get('contato') or 'sem contato'}",
+        f"Relato......: {texto_campo(linha.get('descricao'), '-')}",
+        f"Solicitante.: {texto_campo(linha.get('autor'), 'Anonimo')}"
+        f" / {texto_campo(linha.get('contato'), 'sem contato')}",
         f"Acionar.....: {orgao} - {telefone}",
     ]
     return "\n".join(partes)
@@ -174,9 +188,15 @@ def _html_popup(linha: pd.Series, com_foto: bool = True) -> str:
     """Conteudo HTML exibido ao clicar em um marcador."""
     emoji = SEVERIDADES.get(linha["severidade"], {}).get("emoji", "")
     cor_status = CORES_STATUS.get(linha["status"], "#555")
-    descricao = (linha.get("descricao") or "").strip() or "Sem descricao."
-    referencia = (linha.get("referencia") or "").strip()
-    data = str(linha.get("criado_em", ""))[:16].replace("T", " ")
+    # Tudo que veio do registro passa por texto_html: e texto de terceiro
+    # entrando em HTML. Nomes de config (emoji, cores) sao nossos e ficam.
+    descricao = texto_html(linha.get("descricao"), "Sem descricao.")
+    referencia = texto_html(linha.get("referencia"))
+    categoria = texto_html(linha.get("categoria"))
+    protocolo = texto_html(linha.get("protocolo"))
+    status = texto_html(linha.get("status"))
+    severidade = texto_html(linha.get("severidade"))
+    data = texto_html(str(linha.get("criado_em", ""))[:16].replace("T", " "))
     emergencia = int(linha.get("emergencia", 0))
     confirmacoes = int(linha.get("confirmacoes", 0) or 0)
 
@@ -204,13 +224,13 @@ def _html_popup(linha: pd.Series, com_foto: bool = True) -> str:
     return f"""
     <div style="font-family:system-ui,sans-serif;font-size:13px;width:250px">
       {faixa}
-      <div style="font-weight:700;font-size:14px">{linha['categoria']}</div>
+      <div style="font-weight:700;font-size:14px">{categoria}</div>
       <div style="color:#666;font-size:11px;margin-bottom:6px">
-        {linha.get('protocolo', '')} &middot; {data}
+        {protocolo} &middot; {data}
       </div>
       <span style="background:{cor_status};color:#fff;padding:2px 8px;
-                   border-radius:10px;font-size:11px">{linha['status']}</span>
-      <span style="margin-left:6px">{emoji} {linha['severidade']}</span>
+                   border-radius:10px;font-size:11px">{status}</span>
+      <span style="margin-left:6px">{emoji} {severidade}</span>
       {aviso_risco}
       <p style="margin:8px 0 0">{descricao}</p>
       {f'<p style="margin:4px 0 0;color:#555"><b>Referencia:</b> {referencia}</p>' if referencia else ''}

@@ -134,7 +134,7 @@ mais apertado**, depois **score**.
 ## Estrutura
 
 ```
-Problemas Metereologicos/
+Problemas-Meteorologicos/
 ├── app.py                     # Interface Streamlit (abas)
 ├── classificacao.py           # Triagem P1-P4, discriminadores e SLA
 ├── database.py                # SQLite: CRUD, filtros, prioridade, estatisticas

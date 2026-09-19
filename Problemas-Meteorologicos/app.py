@@ -36,8 +36,10 @@ from config import (
     SEVERIDADES,
     STATUS,
     ZOOM_PADRAO,
+    texto_campo,
 )
 from servicos import (
+    texto_html,
     capturar_gps,
     criar_mapa,
     link_google_maps,
@@ -105,6 +107,26 @@ with st.sidebar:
 
     st.metric("Alertas registrados", numeros["total"])
 
+    # So aparece com o banco vazio. E o caso da primeira visita ao app
+    # publicado: o disco do Streamlit Cloud e efemero, entao cada deploy
+    # comeca sem nenhum alerta e o mapa abriria vazio. Some assim que existe
+    # o primeiro registro, para nao virar botao de duplicar dados por engano.
+    if numeros["total"] == 0:
+        st.divider()
+        st.caption(
+            "Banco vazio. Para conhecer o sistema, carregue alertas de "
+            "demonstracao: 2 por categoria, cobrindo os quatro niveis de "
+            "triagem."
+        )
+        if st.button("Popular com dados de exemplo", use_container_width=True):
+            # Import tardio: o app nao depende do script de demonstracao
+            # para subir, so quando o botao e realmente usado.
+            from gerar_dados_exemplo import gerar_cobertura
+
+            with st.spinner("Gerando alertas de demonstracao..."):
+                gerar_cobertura()
+            st.rerun()
+
     st.divider()
     with st.expander("Como funciona a classificacao"):
         for nivel in ORDEM_NIVEIS:
@@ -137,6 +159,44 @@ paginas = dict(zip(abas, st.tabs(abas)))
 # ===========================================================================
 with paginas["🆘 Registrar alerta"]:
     st.subheader("Registrar alerta de evento natural")
+
+    # O resultado do envio e da confirmacao e desenhado AQUI, no topo da aba,
+    # e nao no ponto do codigo onde a acao acontece. Motivo: a acao termina em
+    # st.rerun(), que descarta a tela em andamento -- um st.success() escrito
+    # logo depois nunca chega a aparecer. E o rerun e necessario para a barra
+    # lateral recontar os alertas; sem ele o contador fica uma interacao
+    # atrasado e mostra "0" logo depois do primeiro envio.
+    protocolo_confirmado = st.session_state.get("confirmou_protocolo")
+    if protocolo_confirmado:
+        st.success(
+            f"✅ Confirmacao registrada em **{protocolo_confirmado}**. "
+            "A prioridade do alerta existente subiu."
+        )
+
+    protocolo_novo = st.session_state.get("ultimo_protocolo")
+    if protocolo_novo:
+        registrado = bd.listar_ocorrencias(texto=protocolo_novo)
+        st.success(f"✅ Alerta enviado. Protocolo **{protocolo_novo}**.")
+        if not registrado.empty:
+            linha_nova = registrado.iloc[0]
+            regra_nova = NIVEIS[linha_nova["nivel"]]
+            st.markdown(
+                etiqueta_nivel(
+                    linha_nova["nivel"],
+                    f"— acionamento em ate <b>{regra_nova['sla_acionamento_min']} "
+                    f"min</b>",
+                ),
+                unsafe_allow_html=True,
+            )
+            st.caption(f"Criterio aplicado: {linha_nova['motivo_nivel']}")
+            if linha_nova["nivel"] == "P1":
+                orgao_p1 = CATEGORIAS.get(
+                    linha_nova["categoria"], {}).get("orgao", "Defesa Civil")
+                st.error(
+                    f"🚨 Classificado como EMERGENCIA. **Se ha risco de vida, "
+                    f"ligue agora para {orgao_p1} — {ORGAOS.get(orgao_p1, '199')}.**"
+                )
+        st.divider()
 
     passo_gps, passo_mapa = st.columns([1, 1.6])
 
@@ -232,7 +292,8 @@ with paginas["🆘 Registrar alerta"]:
                                 use_container_width=True):
                     bd.confirmar_ocorrencia(int(vizinha["id"]),
                                             comentario="Confirmado no registro")
-                    st.success(f"Confirmacao registrada em {vizinha['protocolo']}.")
+                    st.session_state["confirmou_protocolo"] = vizinha["protocolo"]
+                    st.session_state.pop("ultimo_protocolo", None)
                     st.rerun()
 
     st.divider()
@@ -292,29 +353,12 @@ with paginas["🆘 Registrar alerta"]:
                 foto=salvar_foto(foto), emergencia=emergencia,
                 pessoas_em_risco=pessoas_em_risco,
             )
-            st.session_state.update(ponto=None, precisao=None, origem="Mapa")
-
-            # Mostra ao cidadao o resultado da triagem automatica
-            registrado = bd.listar_ocorrencias(texto=protocolo)
-            st.success(f"✅ Alerta enviado. Protocolo **{protocolo}**.")
-            if not registrado.empty:
-                linha = registrado.iloc[0]
-                regra = NIVEIS[linha["nivel"]]
-                st.markdown(
-                    etiqueta_nivel(
-                        linha["nivel"],
-                        f"— acionamento em ate <b>{regra['sla_acionamento_min']} "
-                        f"min</b>",
-                    ),
-                    unsafe_allow_html=True,
-                )
-                st.caption(f"Criterio aplicado: {linha['motivo_nivel']}")
-                if linha["nivel"] == "P1":
-                    orgao = CATEGORIAS[categoria]["orgao"]
-                    st.error(
-                        f"🚨 Classificado como EMERGENCIA. **Se ha risco de vida, "
-                        f"ligue agora para {orgao} — {ORGAOS.get(orgao, '199')}.**"
-                    )
+            st.session_state.update(ponto=None, precisao=None, origem="Mapa",
+                                    ultimo_protocolo=protocolo)
+            st.session_state.pop("confirmou_protocolo", None)
+            # Recarrega para a barra lateral recontar. O aviso de sucesso e
+            # desenhado no topo da aba, onde sobrevive ao rerun.
+            st.rerun()
 
 
 # ===========================================================================
@@ -340,9 +384,11 @@ if perfil == "Defesa Civil":
             st.markdown(
                 etiqueta_nivel(
                     linha["nivel"],
+                    # motivo_nivel carrega a justificativa digitada na
+                    # reclassificacao manual - texto de gente, entra escapado.
                     f"<span style='color:#666;font-size:12px'>"
-                    f"triagem {linha['origem_nivel'].lower()} · "
-                    f"{linha['motivo_nivel']}</span>",
+                    f"triagem {texto_html(linha['origem_nivel']).lower()} · "
+                    f"{texto_html(linha['motivo_nivel'])}</span>",
                 ),
                 unsafe_allow_html=True,
             )
@@ -356,10 +402,10 @@ if perfil == "Defesa Civil":
             with detalhe:
                 if int(linha["pessoas_em_risco"]):
                     st.error("⚠️ PESSOAS ILHADAS, FERIDAS OU PRESAS NO LOCAL")
-                st.markdown(f"**Relato:** {linha['descricao'] or '—'}")
+                st.markdown(f"**Relato:** {texto_campo(linha['descricao'], '—')}")
                 st.markdown(
-                    f"**Local:** {linha['referencia'] or '—'} · "
-                    f"Bairro {linha['bairro'] or '—'}"
+                    f"**Local:** {texto_campo(linha['referencia'], '—')} · "
+                    f"Bairro {texto_campo(linha['bairro'], '—')}"
                 )
                 precisao = (
                     f" (±{linha['precisao_gps']:.0f} m)"
@@ -370,20 +416,22 @@ if perfil == "Defesa Civil":
                     f"· {linha['origem_coordenada']}{precisao}"
                 )
                 st.markdown(
-                    f"**Solicitante:** {linha['autor'] or 'Anonimo'} · "
-                    f"{linha['contato'] or 'sem contato'} · "
+                    f"**Solicitante:** {texto_campo(linha['autor'], 'Anonimo')} · "
+                    f"{texto_campo(linha['contato'], 'sem contato')} · "
                     f"**{int(linha['confirmacoes'])}** confirmacao(oes)"
                 )
                 cobrade = CATEGORIAS.get(linha["categoria"], {}).get("cobrade")
                 if cobrade:
                     st.caption(f"COBRADE: {cobrade}")
-                if linha["orgao_acionado"]:
+                orgao = texto_campo(linha["orgao_acionado"])
+                if orgao:
                     st.info(
-                        f"Acionado: {linha['orgao_acionado']} em "
+                        f"Acionado: {orgao} em "
                         f"{str(linha['acionado_em'])[:16].replace('T', ' ')}"
                     )
-                if linha["foto"]:
-                    caminho = PASTA_BASE / linha["foto"]
+                foto_salva = texto_campo(linha["foto"])
+                if foto_salva:
+                    caminho = PASTA_BASE / foto_salva
                     if caminho.exists():
                         st.image(str(caminho), use_container_width=True)
 
@@ -566,18 +614,82 @@ with paginas["🗺️ Mapa geral"]:
 
     st.caption(f"{len(dados)} evento(s) encontrado(s).")
 
-    centro = (
-        (dados["latitude"].mean(), dados["longitude"].mean())
-        if not dados.empty else CENTRO_PADRAO
-    )
-    mapa_geral = criar_mapa(
-        centro=centro, zoom=ZOOM_PADRAO if dados.empty else 13,
-        dados=dados, agrupar=agrupar, mapa_calor=calor, colorir_por=colorir,
-    )
-    st_folium(mapa_geral, key="mapa_geral", height=520,
-              use_container_width=True, returned_objects=[])
+    # A tabela fica DEPOIS do mapa na tela, mas a escolha dela precisa ser lida
+    # ANTES: o st.dataframe guarda a linha selecionada em session_state e o
+    # rerun que o clique dispara ja entrega o valor aqui em cima.
+    # A chave carrega um numero de versao para o botao "Limpar" poder zerar a
+    # selecao criando um widget novo - state de widget nao se apaga na mao.
+    versao_tabela = st.session_state.get("versao_tabela_mapa", 0)
+    chave_tabela = f"tabela_mapa_geral_{versao_tabela}"
 
-    with st.expander("Ver lista em tabela"):
+    bruto = st.session_state.get(chave_tabela)
+    selecao = getattr(bruto, "selection", None)
+    if selecao is None and isinstance(bruto, dict):
+        selecao = bruto.get("selection")
+    escolhidas = list((selecao or {}).get("rows") or [])
+
+    evento = None
+    if escolhidas and not dados.empty:
+        posicao = escolhidas[0]
+        # Trocar um filtro pode encurtar a lista e deixar a posicao no vazio.
+        if 0 <= posicao < len(dados):
+            evento = dados.iloc[posicao]
+
+    if evento is not None:
+        # Selecionou: o mapa vai para cima do evento, bem de perto.
+        centro = (float(evento["latitude"]), float(evento["longitude"]))
+        zoom_mapa = 17
+        destaque = centro
+    else:
+        centro = (
+            (dados["latitude"].mean(), dados["longitude"].mean())
+            if not dados.empty else CENTRO_PADRAO
+        )
+        zoom_mapa = ZOOM_PADRAO if dados.empty else 13
+        destaque = None
+
+    if evento is not None:
+        faixa, botao = st.columns([5, 1])
+        local = " · ".join(
+            parte for parte in (evento.get("referencia"), evento.get("bairro"))
+            if parte
+        ) or "sem referencia"
+        faixa.info(
+            f"📍 **{evento['protocolo']}** — {evento['categoria']} · "
+            f"{evento['nivel']} {evento['nivel_nome']} · {evento['status']}  \n"
+            f"{local} · {evento['latitude']:.6f}, {evento['longitude']:.6f}",
+            icon="🎯",
+        )
+        botao.link_button(
+            "Abrir no Maps",
+            link_google_maps(evento["latitude"], evento["longitude"]),
+            use_container_width=True,
+        )
+        if botao.button("Limpar selecao", use_container_width=True,
+                        key="limpar_selecao_mapa"):
+            st.session_state["versao_tabela_mapa"] = versao_tabela + 1
+            st.rerun()
+    else:
+        st.caption(
+            "Dica: clique em uma linha da tabela abaixo para centralizar o mapa "
+            "no local daquele evento."
+        )
+
+    mapa_geral = criar_mapa(
+        centro=centro, zoom=zoom_mapa,
+        dados=dados, agrupar=agrupar, mapa_calor=calor, colorir_por=colorir,
+        ponto_selecionado=destaque, raio_precisao=60,
+    )
+    # center/zoom so vao quando ha selecao: sem isso o mapa voltaria para o
+    # ponto fixo a cada rerun e o usuario nao conseguiria navegar sozinho.
+    st_folium(mapa_geral, key="mapa_geral", height=520,
+              use_container_width=True, returned_objects=[],
+              center=centro if evento is not None else None,
+              zoom=zoom_mapa if evento is not None else None)
+
+    # expanded quando ha selecao: senao o expander fecharia no rerun do clique
+    # e o usuario perderia a lista bem na hora em que esta usando ela.
+    with st.expander("Ver lista em tabela", expanded=evento is not None):
         if dados.empty:
             st.info("Nenhum registro para os filtros aplicados.")
         else:
@@ -586,7 +698,11 @@ with paginas["🗺️ Mapa geral"]:
                 "severidade", "status", "situacao_sla", "confirmacoes",
                 "bairro", "referencia", "origem_coordenada", "criado_em",
             ]
-            st.dataframe(dados[colunas], use_container_width=True, hide_index=True)
+            st.caption("Clique na linha para ver o evento no mapa acima.")
+            st.dataframe(
+                dados[colunas], use_container_width=True, hide_index=True,
+                key=chave_tabela, on_select="rerun", selection_mode="single-row",
+            )
             st.download_button(
                 "⬇️ Exportar CSV",
                 data=dados.to_csv(index=False).encode("utf-8-sig"),

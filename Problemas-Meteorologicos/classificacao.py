@@ -30,6 +30,7 @@ from config import (
     ORDEM_NIVEIS,
     SEVERIDADES,
     TETO_ESCALONAMENTO,
+    texto_campo,
 )
 
 # ---------------------------------------------------------------------------
@@ -108,8 +109,8 @@ def classificar(linha) -> dict:
     if isinstance(manual, str) and manual in NIVEIS:
         return {
             "nivel": manual,
-            "motivo": linha.get("motivo_classificacao")
-                      or "Reclassificado pela equipe",
+            "motivo": texto_campo(linha.get("motivo_classificacao"),
+                                  "Reclassificado pela equipe"),
             "origem": "Manual",
         }
 
@@ -134,6 +135,12 @@ def subir_nivel(nivel: str) -> str:
     """
     teto = ORDEM_NIVEIS.index(TETO_ESCALONAMENTO)
     indice = ORDEM_NIVEIS.index(nivel)
+    if indice <= teto:
+        # P1 e o proprio teto ja estao no topo do que o escalonamento alcanca.
+        # Sem esta guarda, subir_nivel("P1") devolvia "P2" - rebaixava a
+        # emergencia. Hoje aplicar() nao chega aqui com P1, mas a funcao e
+        # publica e nao pode depender de quem chama para se comportar.
+        return nivel
     return ORDEM_NIVEIS[max(indice - 1, teto)]
 
 

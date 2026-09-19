@@ -5,3 +5,4 @@ data/ocorrencias.db
 data/fotos/*
 !data/fotos/.gitkeep
 .streamlit/secrets.toml
+.pytest_cache/

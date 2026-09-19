@@ -2,9 +2,11 @@
 Gera alertas ficticios para demonstracao em sala de aula.
 
 Uso:
-    python gerar_dados_exemplo.py          # cria 25 alertas
-    python gerar_dados_exemplo.py 60       # cria 60 alertas
-    python gerar_dados_exemplo.py --limpar # apaga tudo antes de gerar
+    python gerar_dados_exemplo.py             # cria 25 alertas
+    python gerar_dados_exemplo.py 60          # cria 60 alertas
+    python gerar_dados_exemplo.py --limpar    # apaga tudo antes de gerar
+    python gerar_dados_exemplo.py --cobertura # cria 2 alertas por categoria
+                                               # (combinavel com --limpar)
 
 Os pontos sao espalhados ao redor do CENTRO_PADRAO definido em config.py.
 """
@@ -16,7 +18,13 @@ import sqlite3
 import sys
 from datetime import datetime, timedelta
 
-from config import CAMINHO_BANCO, CATEGORIAS, CENTRO_PADRAO, SEVERIDADES
+from config import (
+    CAMINHO_BANCO,
+    CATEGORIAS,
+    CENTRO_PADRAO,
+    RAIO_DUPLICIDADE_M,
+    SEVERIDADES,
+)
 import database as bd
 
 BAIRROS = ["Centro", "Jardim Planalto", "Vila Sao Jose", "Parque Alvorada",
@@ -43,6 +51,10 @@ NOMES = ["Ana", "Carlos", "Fernanda", "Joao", "Luciana", "Marcos",
 
 
 def limpar_banco() -> None:
+    # criar_tabelas() ANTES do DELETE: num clone novo o .db ainda nao existe e
+    # "--limpar" quebrava com "no such table: confirmacoes" -- justamente no
+    # primeiro comando que alguem roda depois de baixar o projeto.
+    bd.criar_tabelas()
     with bd.conectar() as conexao:
         conexao.executescript(
             "DELETE FROM confirmacoes;"
@@ -123,10 +135,106 @@ def gerar(quantidade: int = 25) -> None:
     print(bd.estatisticas())
 
 
+def gerar_cobertura(semente: int = 42) -> None:
+    """Cria exatamente 2 alertas para CADA categoria de CATEGORIAS.
+
+    Um par por categoria, com os dois extremos da triagem: um ponto grave
+    (severidade Critica, emergencia, GPS) e um ponto leve (severidade Baixa,
+    sem emergencia, coordenada de mapa). Serve para a apresentacao: toda
+    categoria aparece no mapa e mostra os dois extremos de prioridade.
+
+    Usa uma instancia local de random.Random (nunca o modulo random global)
+    para que a mesma semente sempre produza as mesmas coordenadas.
+    """
+    bd.criar_tabelas()
+    sorteio = random.Random(semente)
+    latitude_base, longitude_base = CENTRO_PADRAO
+    pontos_usados: list[tuple[float, float]] = []
+
+    def sortear_coordenada() -> tuple[float, float]:
+        """Sorteia lat/lon ate ficar a >= RAIO_DUPLICIDADE_M de todo ponto ja usado."""
+        while True:
+            lat = round(latitude_base + sorteio.uniform(-0.035, 0.035), 6)
+            lon = round(longitude_base + sorteio.uniform(-0.035, 0.035), 6)
+            if all(
+                bd.distancia_metros(lat, lon, outra_lat, outra_lon)
+                >= RAIO_DUPLICIDADE_M
+                for outra_lat, outra_lon in pontos_usados
+            ):
+                pontos_usados.append((lat, lon))
+                return lat, lon
+
+    contagem: dict[str, int] = {}
+
+    for categoria, dados_categoria in CATEGORIAS.items():
+        pares = (
+            {  # Ponto A: grave
+                "severidade": "Critica",
+                "emergencia": True,
+                "pessoas_em_risco": bool(dados_categoria["risco_vital"]),
+                "origem_coordenada": "GPS",
+                "precisao_gps": round(sorteio.uniform(5, 45), 1),
+            },
+            {  # Ponto B: leve
+                "severidade": "Baixa",
+                "emergencia": False,
+                "pessoas_em_risco": False,
+                "origem_coordenada": "Mapa",
+                "precisao_gps": None,
+            },
+        )
+
+        for dados_ponto in pares:
+            latitude, longitude = sortear_coordenada()
+
+            protocolo = bd.inserir_ocorrencia(
+                categoria=categoria,
+                severidade=dados_ponto["severidade"],
+                descricao=RELATOS[categoria],
+                latitude=latitude,
+                longitude=longitude,
+                precisao_gps=dados_ponto["precisao_gps"],
+                origem_coordenada=dados_ponto["origem_coordenada"],
+                referencia=f"Rua {sorteio.randint(1, 30)}, n. {sorteio.randint(10, 900)}",
+                bairro=sorteio.choice(BAIRROS),
+                autor=sorteio.choice(NOMES),
+                contato=f"18 9{sorteio.randint(1000, 9999)}-{sorteio.randint(1000, 9999)}",
+                emergencia=dados_ponto["emergencia"],
+                pessoas_em_risco=dados_ponto["pessoas_em_risco"],
+            )
+
+            with bd.conectar() as conexao:
+                linha = conexao.execute(
+                    "SELECT id FROM ocorrencias WHERE protocolo = ?", (protocolo,)
+                ).fetchone()
+                registro_id = linha["id"]
+
+                # Recentes e em aberto: precisam aparecer na fila da Central.
+                criado = datetime.now() - timedelta(
+                    hours=sorteio.randint(0, 5), minutes=sorteio.randint(0, 59)
+                )
+                conexao.execute(
+                    "UPDATE ocorrencias SET criado_em = ?, atualizado_em = ? "
+                    "WHERE id = ?",
+                    (criado.isoformat(timespec="seconds"),
+                     criado.isoformat(timespec="seconds"), registro_id),
+                )
+
+            contagem[categoria] = contagem.get(categoria, 0) + 1
+
+    print("Alertas de cobertura gerados por categoria:")
+    for categoria, quantidade in contagem.items():
+        print(f"  {categoria}: {quantidade}")
+    print(f"Total: {sum(contagem.values())} alertas em {CAMINHO_BANCO}")
+
+
 if __name__ == "__main__":
     argumentos = sys.argv[1:]
     if "--limpar" in argumentos:
         limpar_banco()
         argumentos = [a for a in argumentos if a != "--limpar"]
-    total = int(argumentos[0]) if argumentos else 25
-    gerar(total)
+    if "--cobertura" in argumentos:
+        gerar_cobertura()
+    else:
+        total = int(argumentos[0]) if argumentos else 25
+        gerar(total)

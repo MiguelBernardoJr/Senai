@@ -51,6 +51,10 @@ NOMES = ["Ana", "Carlos", "Fernanda", "Joao", "Luciana", "Marcos",
 
 
 def limpar_banco() -> None:
+    # criar_tabelas() ANTES do DELETE: num clone novo o .db ainda nao existe e
+    # "--limpar" quebrava com "no such table: confirmacoes" -- justamente no
+    # primeiro comando que alguem roda depois de baixar o projeto.
+    bd.criar_tabelas()
     with bd.conectar() as conexao:
         conexao.executescript(
             "DELETE FROM confirmacoes;"

@@ -80,3 +80,29 @@ def test_ponto_grave_e_leve_recebem_niveis_de_triagem_diferentes(banco):
         assert len(niveis) == 2, (
             f"{categoria}: os dois pontos cairam no mesmo nivel de triagem"
         )
+
+
+def test_limpar_banco_funciona_em_clone_novo(tmp_path, monkeypatch):
+    """`--limpar` e o primeiro comando que alguem roda ao baixar o projeto.
+
+    Antes desta correcao, limpar_banco() rodava DELETE antes de criar_tabelas()
+    e quebrava com "no such table: confirmacoes" num banco que ainda nao existe.
+    """
+    monkeypatch.setattr(db, "CAMINHO_BANCO", tmp_path / "novo.db")
+    monkeypatch.setattr(db, "PASTA_FOTOS", tmp_path / "fotos")
+    assert not (tmp_path / "novo.db").exists()
+
+    gerador.limpar_banco()          # nao pode levantar excecao
+
+    assert db.listar_ocorrencias().empty
+    gerador.gerar_cobertura(semente=1)
+    assert len(db.listar_ocorrencias()) == 2 * len(CATEGORIAS)
+
+
+def test_limpar_banco_apaga_tudo(banco):
+    gerador.gerar_cobertura(semente=1)
+    assert not db.listar_ocorrencias().empty
+
+    gerador.limpar_banco()
+    assert db.listar_ocorrencias().empty
+    assert db.listar_historico().empty

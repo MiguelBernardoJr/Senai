@@ -1,0 +1,7 @@
+.venv/
+__pycache__/
+*.pyc
+data/ocorrencias.db
+data/fotos/*
+!data/fotos/.gitkeep
+.streamlit/secrets.toml

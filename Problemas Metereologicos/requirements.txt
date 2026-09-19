@@ -1,0 +1,6 @@
+streamlit>=1.40
+streamlit-folium>=0.24
+streamlit-geolocation>=0.0.10
+folium>=0.17
+pandas>=2.2
+Pillow>=10.4

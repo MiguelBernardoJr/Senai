@@ -1,0 +1,14 @@
+{
+	"folders": [
+		{
+			"path": "."
+		},
+		{
+			"path": "../Groq-Rag"
+		},
+		{
+			"path": "../Tempo"
+		}
+	],
+	"settings": {}
+}

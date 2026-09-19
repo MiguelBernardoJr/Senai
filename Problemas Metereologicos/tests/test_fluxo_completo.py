@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
+import pandas as pd
 import pytest
 
 import database as db
@@ -158,3 +159,63 @@ def test_banco_recem_criado_responde_a_todas_as_telas(banco):
     assert len(db.resumo_por_nivel()) == 4
     assert db.estatisticas()["total"] == 0
     assert db.aderencia_sla()["percentual"] is None
+
+
+# ---------------------------------------------------------------------------
+# NULL virando NaN depois da primeira foto
+# ---------------------------------------------------------------------------
+
+
+def test_primeira_foto_nao_contamina_os_outros_alertas(banco, tmp_path, monkeypatch):
+    """Cenario exato que derrubou o app em producao.
+
+    Enquanto NENHUM alerta tinha foto, a coluna era toda NULL e o pandas
+    devolvia None -- as guardas `if linha["foto"]` funcionavam. Bastou a
+    primeira foto para a coluna virar texto e os NULL dos outros alertas
+    virarem NaN (float, e TRUTHY): a guarda passava e `PASTA_BASE / NaN`
+    estourava TypeError, derrubando o mapa e o cartao da Central para TODOS.
+    """
+    import io
+
+    import servicos
+    from PIL import Image
+
+    monkeypatch.setattr(servicos, "PASTA_FOTOS", tmp_path)
+
+    db.inserir_ocorrencia(categoria="Buraco na via", severidade="Baixa",
+                          descricao="Sem foto", latitude=LAT, longitude=LON)
+
+    buffer = io.BytesIO()
+    Image.new("RGB", (900, 700), "gray").save(buffer, "JPEG")
+    buffer.seek(0)
+    db.inserir_ocorrencia(categoria="Alagamento / enchente", severidade="Alta",
+                          descricao="Com foto", latitude=LAT + 0.01, longitude=LON,
+                          foto=servicos.salvar_foto(buffer))
+
+    dados = db.listar_ocorrencias()
+    sem_foto = dados[dados["descricao"] == "Sem foto"].iloc[0]
+
+    # O gatilho: a coluna deixou de ser toda NULL.
+    assert isinstance(sem_foto["foto"], float) and pd.isna(sem_foto["foto"])
+    assert bool(sem_foto["foto"]) is True          # NaN e truthy
+
+    # Nada disso pode mais quebrar nem imprimir "nan".
+    assert servicos._foto_em_base64(sem_foto["foto"]) == ""
+    assert "nan" not in servicos._html_popup(sem_foto).lower()
+    assert "nan" not in servicos.texto_despacho(sem_foto).lower()
+    assert servicos.criar_mapa(CENTRO_PADRAO, 13, dados=dados)._repr_html_()
+
+
+@pytest.mark.parametrize("coluna", [
+    "foto", "orgao_acionado", "acionado_em", "resolvido_em",
+    "classificacao_manual", "motivo_classificacao",
+])
+def test_colunas_anulaveis_atravessam_texto_campo(banco, coluna):
+    """Toda coluna que nasce NULL passa pelo mesmo caminho seguro."""
+    from config import texto_campo
+
+    db.inserir_ocorrencia(categoria="Buraco na via", severidade="Baixa",
+                          descricao="Teste", latitude=LAT, longitude=LON)
+    valor = db.listar_ocorrencias().iloc[0][coluna]
+    assert texto_campo(valor) == ""
+    assert texto_campo(valor, "padrao") == "padrao"

@@ -1,7 +1,7 @@
 # MEMÓRIA DO PROJETO — Alerta Cidadão
 
 > Estado atual, decisões vigentes e pendências. **Sempre anexado.**
-> Última atualização: 19/09/2026 · Fase: **v1 no ar, com suíte de testes cobrindo a triagem**
+> Última atualização: 19/09/2026 · Fase: **v1 no ar, 129 testes, 4 bugs corrigidos**
 
 ## Situação
 
@@ -21,7 +21,7 @@ Projeto na pasta `Problemas Metereologicos/`, publicado em
 - `servicos.py` — GPS, foto (Pillow), mapa Folium com cluster / mapa de calor /
   satélite e texto de despacho com telefone do órgão.
 - `app.py` — interface Streamlit.
-- `tests/` — **107 testes, todos passando** (`python -m pytest`).
+- `tests/` — **129 testes, todos passando** (`python -m pytest`).
 
 ## Como a suíte de testes está organizada
 
@@ -29,8 +29,8 @@ Projeto na pasta `Problemas Metereologicos/`, publicado em
 |---|---|---|
 | `test_classificacao.py` | Os 12 discriminadores um a um, teto do escalonamento, SLA e formatação de prazo | 40 |
 | `test_database.py` | Protocolo, fluxo de status, confirmação, reclassificação, score, filtros, fila, proximidade, painel e migração | 39 |
-| `test_servicos.py` | Texto de despacho, links, redimensionamento de foto e mapa | 22 |
-| `test_fluxo_completo.py` | Ciclo de vida ponta a ponta, escalonamento e banco vazio | 6 |
+| `test_servicos.py` | Texto de despacho, links, redimensionamento de foto, mapa e o NaN do pandas | 37 |
+| `test_fluxo_completo.py` | Ciclo de vida ponta a ponta, escalonamento, banco vazio e contaminacao por NaN | 13 |
 
 `tests/conftest.py` dá a cada teste um `.db` temporário próprio (trocando
 `database.CAMINHO_BANCO`) — nenhum teste encosta no `data/ocorrencias.db` real.
@@ -44,10 +44,12 @@ escalonamento sem desmontar `inserir_ocorrencia()`.
 | B-01 | `criar_tabelas()` | Os índices eram criados **antes** de `_migrar()`. Num banco de versão anterior, `CREATE INDEX ... ON ocorrencias(emergencia)` falhava com *"no such column"* e a migração nunca rodava — o app não subia, exatamente no caso que a migração existe para resolver. | Tabelas → migração → índices, nessa ordem. |
 | B-02 | `listar_historico()` | `ORDER BY criado_em DESC` sem desempate. Como `_agora()` tem precisão de segundos, abrir e acionar no mesmo segundo fazia o histórico aparecer fora de ordem na tela. | `ORDER BY h.criado_em DESC, h.id DESC`. |
 | B-03 | `subir_nivel()` | `subir_nivel("P1")` devolvia `"P2"` — **rebaixava** a emergência. Hoje `aplicar()` não chega a chamar com P1 (há guarda no chamador), mas a função é pública e não pode depender de quem a chama. | Guarda `if indice <= teto: return nivel`. |
+| B-04 | `servicos._foto_em_base64()` e `app._cartao()` | **Derrubava o app em uso real.** Enquanto nenhum alerta tinha foto, a coluna era toda NULL e o pandas devolvia `None` — as guardas `if linha["foto"]` funcionavam. Bastou a **primeira foto** para a coluna virar texto e os NULL dos outros alertas virarem `NaN` (float, e **truthy**): a guarda passava e `PASTA_BASE / NaN` estourava `TypeError`, quebrando o mapa e o cartão da Central **para todos os alertas**. Os mesmos `or` de fallback em referência, bairro, autor, contato, descrição e órgão acionado imprimiriam `nan` na tela. | `config.texto_campo()`, usado em `classificacao`, `servicos` e `app`. |
 
-Nenhum dos três mudou comportamento visível no uso normal — B-03 era inalcançável
-e B-01 só atinge quem já tinha um `.db` antigo. Foram corrigidos porque são
-armadilhas para a próxima alteração.
+B-01, B-02 e B-03 não mudavam comportamento visível: B-03 era inalcançável e
+B-01 só atinge quem já tinha um `.db` antigo. Foram corrigidos porque são
+armadilhas para a próxima alteração. **B-04 era diferente — quebrava o app de
+verdade**, e só aparecia depois que alguém enviasse a primeira foto.
 
 ## Pendências
 
@@ -72,7 +74,8 @@ armadilhas para a próxima alteração.
 | D-08 | Foto com nome `uuid4` e caminho relativo no banco. Dois envios simultâneos não se sobrescrevem e o `.db` não fica preso a um computador. | 19/09/2026 |
 | D-09 | `atualizar_status` carimba `resolvido_em` apenas em **"Resolvido"**; "Improcedente" encerra sem entrar no tempo médio de resolução. | 19/09/2026 |
 | D-10 | Cidade padrão do mapa: **Pirapozinho/SP**, `CENTRO_PADRAO = (-22.2747, -51.5019)`. | 19/09/2026 |
-| D-11 | Identificadores, comentários e chaves de banco sem acento; texto de tela com acento. Evita problema de encoding em terminal Windows sem prejudicar a apresentação. | 19/09/2026 |
+| D-11 | `config.texto_campo()` é a **única** porta para ler campo anulável vindo do banco. Mora em `config.py` (a base que todos importam) e detecta NaN com `valor != valor`, para não arrastar o pandas para dentro do módulo base. Nenhum `or` cru em campo que pode ser NULL. | 19/09/2026 |
+| D-12 | Identificadores, comentários e chaves de banco sem acento; texto de tela com acento. Evita problema de encoding em terminal Windows sem prejudicar a apresentação. | 19/09/2026 |
 
 ## Riscos conhecidos
 
@@ -82,6 +85,7 @@ armadilhas para a próxima alteração.
 | Disco do Streamlit Cloud é efêmero: `.db` e fotos somem a cada redeploy. | Aceitável para a apresentação. Para uso real, trocar SQLite por PostgreSQL e as fotos por um bucket — `database.py` está isolado para que a troca fique em um arquivo só. |
 | Folium carrega o Leaflet de CDN. Sem internet, o mapa não desenha. | Limitação conhecida da biblioteca; não afeta uso normal com rede. |
 | Mudar peso, ordem de discriminador ou SLA reclassifica **todo** o histórico (é o desenho — D-01). | Os 40 testes de `test_classificacao.py` quebram se a tabela de triagem mudar sem intenção. Rodar `python -m pytest` antes de todo commit. |
+| Campo anulável lido direto do DataFrame com `or` ou `if` volta a vazar `NaN` (B-04). | `config.texto_campo()` e os testes de `test_fluxo_completo.py` que inserem um alerta com foto e outro sem. |
 | Demonstração com banco vazio não mostra nada da triagem. | Popular a base antes de apresentar (ver pendência sobre `gerar_dados_exemplo.py`). |
 
 ## Histórico

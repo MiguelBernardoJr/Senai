@@ -14,6 +14,29 @@ PASTA_FOTOS = PASTA_DADOS / "fotos"
 CAMINHO_BANCO = PASTA_DADOS / "ocorrencias.db"
 
 # ---------------------------------------------------------------------------
+# Leitura de campo vindo do banco / DataFrame
+# ---------------------------------------------------------------------------
+def texto_campo(valor, padrao: str = "") -> str:
+    """Devolve o campo como texto limpo, trocando vazio e NULL pelo padrao.
+
+    Existe por causa de uma armadilha do pandas: enquanto a coluna e toda
+    NULL ele devolve None, mas basta UMA linha preenchida para a coluna virar
+    texto e os NULL das outras virarem NaN (float). E NaN e TRUTHY -- ou seja,
+    `valor or padrao` e `if not valor` NAO pegam o NaN, que vaza para quem
+    esperava uma string. Foi assim que o mapa quebrou no instante em que a
+    primeira foto foi enviada.
+
+    `valor != valor` so e verdadeiro para NaN; usar isso evita depender do
+    pandas neste modulo, que e a base importada por todos os outros.
+    """
+    if valor is None:
+        return padrao
+    if isinstance(valor, float) and valor != valor:
+        return padrao
+    return str(valor).strip() or padrao
+
+
+# ---------------------------------------------------------------------------
 # Mapa
 # ---------------------------------------------------------------------------
 # Centro padrao do mapa ao abrir o app (Pirapozinho - SP).

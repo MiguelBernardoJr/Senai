@@ -8,6 +8,7 @@ from datetime import datetime
 import pandas as pd
 import pytest
 
+import config
 import servicos
 from config import CENTRO_PADRAO, LARGURA_MAX_FOTO
 
@@ -202,3 +203,85 @@ def test_mapa_marca_o_ponto_escolhido_e_o_raio():
     mapa = servicos.criar_mapa(CENTRO_PADRAO, 14,
                                ponto_selecionado=(LAT, LON), raio_precisao=50)
     assert mapa._repr_html_()
+
+
+# ---------------------------------------------------------------------------
+# NaN vindo do pandas
+# ---------------------------------------------------------------------------
+# Quando TODA a coluna e NULL, o pandas devolve None e as guardas comuns
+# funcionam. Basta UMA linha preenchida para a coluna virar texto e os NULL
+# das outras virarem NaN (float) -- que e truthy e escapa de `or` / `not`.
+# Foi assim que o mapa quebrou no momento em que a primeira foto foi enviada.
+
+
+def _tabela_com_coluna_mista(coluna: str, preenchido: str):
+    """Reproduz o dtype real: uma linha com valor, outra com NULL -> NaN."""
+    import sqlite3
+    import tempfile
+    caminho = tempfile.mktemp(suffix=".db")
+    conexao = sqlite3.connect(caminho)
+    conexao.execute(f"CREATE TABLE t (id INTEGER, {coluna} TEXT)")
+    conexao.executemany("INSERT INTO t VALUES (?, ?)",
+                        [(1, None), (2, preenchido)])
+    conexao.commit()
+    dados = pd.read_sql_query("SELECT * FROM t", conexao)
+    conexao.close()
+    return dados
+
+
+def test_coluna_mista_produz_nan_e_nao_none():
+    """Fixa o comportamento do pandas que originou o bug."""
+    dados = _tabela_com_coluna_mista("foto", "data/fotos/a.jpg")
+    vazio = dados.iloc[0]["foto"]
+    assert vazio is not None
+    assert isinstance(vazio, float) and pd.isna(vazio)
+    assert not (not vazio)          # NaN e truthy: a guarda antiga nao pegava
+
+
+def test_foto_nan_nao_quebra_o_popup():
+    """Regressao: TypeError 'WindowsPath' / 'float' ao montar o mapa."""
+    dados = _tabela_com_coluna_mista("foto", "data/fotos/a.jpg")
+    assert servicos._foto_em_base64(dados.iloc[0]["foto"]) == ""
+
+
+def test_mapa_desenha_com_foto_nan():
+    """O mapa inteiro parava de renderizar depois da primeira foto enviada."""
+    sem_foto = alerta(protocolo="OC2026-00100")
+    com_foto = alerta(protocolo="OC2026-00101", latitude=-22.28)
+    tabela = pd.DataFrame([sem_foto, com_foto])
+    tabela["foto"] = [float("nan"), "data/fotos/inexistente.jpg"]
+    html = servicos.criar_mapa(CENTRO_PADRAO, 14, dados=tabela)._repr_html_()
+    assert "OC2026-00100" in html and "OC2026-00101" in html
+
+
+@pytest.mark.parametrize("campo,padrao", [
+    ("referencia", "nao informado"),
+    ("bairro", "nao informado"),
+    ("descricao", "-"),
+    ("autor", "Anonimo"),
+    ("contato", "sem contato"),
+])
+def test_despacho_nao_escreve_nan(campo, padrao):
+    """Sem o tratamento, o despacho sairia com 'nan' no lugar do texto."""
+    texto = servicos.texto_despacho(alerta(**{campo: float("nan")}))
+    assert "nan" not in texto.lower().replace("nao informado", "")
+    assert padrao in texto
+
+
+def test_popup_nao_escreve_nan():
+    html = servicos._html_popup(alerta(descricao=float("nan"),
+                                       referencia=float("nan")))
+    assert "nan" not in html.lower()
+    assert "Sem descricao." in html
+
+
+@pytest.mark.parametrize("valor,esperado", [
+    (None, "padrao"),
+    (float("nan"), "padrao"),
+    ("", "padrao"),
+    ("   ", "padrao"),
+    ("  texto  ", "texto"),
+    (42, "42"),
+])
+def test_texto_campo_normaliza_o_que_vem_do_dataframe(valor, esperado):
+    assert config.texto_campo(valor, "padrao") == esperado

@@ -36,6 +36,7 @@ from config import (
     SEVERIDADES,
     STATUS,
     ZOOM_PADRAO,
+    texto_campo,
 )
 from servicos import (
     capturar_gps,
@@ -356,10 +357,10 @@ if perfil == "Defesa Civil":
             with detalhe:
                 if int(linha["pessoas_em_risco"]):
                     st.error("⚠️ PESSOAS ILHADAS, FERIDAS OU PRESAS NO LOCAL")
-                st.markdown(f"**Relato:** {linha['descricao'] or '—'}")
+                st.markdown(f"**Relato:** {texto_campo(linha['descricao'], '—')}")
                 st.markdown(
-                    f"**Local:** {linha['referencia'] or '—'} · "
-                    f"Bairro {linha['bairro'] or '—'}"
+                    f"**Local:** {texto_campo(linha['referencia'], '—')} · "
+                    f"Bairro {texto_campo(linha['bairro'], '—')}"
                 )
                 precisao = (
                     f" (±{linha['precisao_gps']:.0f} m)"
@@ -370,20 +371,22 @@ if perfil == "Defesa Civil":
                     f"· {linha['origem_coordenada']}{precisao}"
                 )
                 st.markdown(
-                    f"**Solicitante:** {linha['autor'] or 'Anonimo'} · "
-                    f"{linha['contato'] or 'sem contato'} · "
+                    f"**Solicitante:** {texto_campo(linha['autor'], 'Anonimo')} · "
+                    f"{texto_campo(linha['contato'], 'sem contato')} · "
                     f"**{int(linha['confirmacoes'])}** confirmacao(oes)"
                 )
                 cobrade = CATEGORIAS.get(linha["categoria"], {}).get("cobrade")
                 if cobrade:
                     st.caption(f"COBRADE: {cobrade}")
-                if linha["orgao_acionado"]:
+                orgao = texto_campo(linha["orgao_acionado"])
+                if orgao:
                     st.info(
-                        f"Acionado: {linha['orgao_acionado']} em "
+                        f"Acionado: {orgao} em "
                         f"{str(linha['acionado_em'])[:16].replace('T', ' ')}"
                     )
-                if linha["foto"]:
-                    caminho = PASTA_BASE / linha["foto"]
+                foto_salva = texto_campo(linha["foto"])
+                if foto_salva:
+                    caminho = PASTA_BASE / foto_salva
                     if caminho.exists():
                         st.image(str(caminho), use_container_width=True)
 

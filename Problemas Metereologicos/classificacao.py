@@ -30,6 +30,7 @@ from config import (
     ORDEM_NIVEIS,
     SEVERIDADES,
     TETO_ESCALONAMENTO,
+    texto_campo,
 )
 
 # ---------------------------------------------------------------------------
@@ -108,8 +109,8 @@ def classificar(linha) -> dict:
     if isinstance(manual, str) and manual in NIVEIS:
         return {
             "nivel": manual,
-            "motivo": linha.get("motivo_classificacao")
-                      or "Reclassificado pela equipe",
+            "motivo": texto_campo(linha.get("motivo_classificacao"),
+                                  "Reclassificado pela equipe"),
             "origem": "Manual",
         }
 

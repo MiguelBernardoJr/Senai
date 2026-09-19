@@ -27,6 +27,7 @@ from config import (
     ORGAOS,
     PASTA_FOTOS,
     SEVERIDADES,
+    texto_campo,
 )
 
 
@@ -97,6 +98,7 @@ def salvar_foto(arquivo_enviado) -> str | None:
 
 def _foto_em_base64(caminho_relativo: str | None, largura: int = 220) -> str:
     """Converte a foto em <img> embutido, para aparecer dentro do popup."""
+    caminho_relativo = texto_campo(caminho_relativo)
     if not caminho_relativo:
         return ""
     caminho = Path(__file__).parent / caminho_relativo
@@ -145,8 +147,8 @@ def texto_despacho(linha: pd.Series) -> str:
         + (f" (COBRADE {cobrade})" if cobrade else ""),
         f"Gravidade...: {linha['severidade']}",
         f"Registrado..: {data}",
-        f"Local.......: {linha.get('referencia') or 'nao informado'}"
-        f" - Bairro {linha.get('bairro') or 'nao informado'}",
+        f"Local.......: {texto_campo(linha.get('referencia'), 'nao informado')}"
+        f" - Bairro {texto_campo(linha.get('bairro'), 'nao informado')}",
         f"Coordenadas.: {linha['latitude']}, {linha['longitude']}{precisao}",
         f"Mapa........: {link_google_maps(linha['latitude'], linha['longitude'])}",
     ]
@@ -159,9 +161,9 @@ def texto_despacho(linha: pd.Series) -> str:
         partes.append(f"Confirmado por mais {confirmacoes} cidadao(s).")
 
     partes += [
-        f"Relato......: {linha.get('descricao') or '-'}",
-        f"Solicitante.: {linha.get('autor') or 'Anonimo'}"
-        f" / {linha.get('contato') or 'sem contato'}",
+        f"Relato......: {texto_campo(linha.get('descricao'), '-')}",
+        f"Solicitante.: {texto_campo(linha.get('autor'), 'Anonimo')}"
+        f" / {texto_campo(linha.get('contato'), 'sem contato')}",
         f"Acionar.....: {orgao} - {telefone}",
     ]
     return "\n".join(partes)
@@ -174,8 +176,8 @@ def _html_popup(linha: pd.Series, com_foto: bool = True) -> str:
     """Conteudo HTML exibido ao clicar em um marcador."""
     emoji = SEVERIDADES.get(linha["severidade"], {}).get("emoji", "")
     cor_status = CORES_STATUS.get(linha["status"], "#555")
-    descricao = (linha.get("descricao") or "").strip() or "Sem descricao."
-    referencia = (linha.get("referencia") or "").strip()
+    descricao = texto_campo(linha.get("descricao"), "Sem descricao.")
+    referencia = texto_campo(linha.get("referencia"))
     data = str(linha.get("criado_em", ""))[:16].replace("T", " ")
     emergencia = int(linha.get("emergencia", 0))
     confirmacoes = int(linha.get("confirmacoes", 0) or 0)

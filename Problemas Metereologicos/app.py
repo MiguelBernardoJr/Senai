@@ -140,6 +140,44 @@ paginas = dict(zip(abas, st.tabs(abas)))
 with paginas["🆘 Registrar alerta"]:
     st.subheader("Registrar alerta de evento natural")
 
+    # O resultado do envio e da confirmacao e desenhado AQUI, no topo da aba,
+    # e nao no ponto do codigo onde a acao acontece. Motivo: a acao termina em
+    # st.rerun(), que descarta a tela em andamento -- um st.success() escrito
+    # logo depois nunca chega a aparecer. E o rerun e necessario para a barra
+    # lateral recontar os alertas; sem ele o contador fica uma interacao
+    # atrasado e mostra "0" logo depois do primeiro envio.
+    protocolo_confirmado = st.session_state.get("confirmou_protocolo")
+    if protocolo_confirmado:
+        st.success(
+            f"✅ Confirmacao registrada em **{protocolo_confirmado}**. "
+            "A prioridade do alerta existente subiu."
+        )
+
+    protocolo_novo = st.session_state.get("ultimo_protocolo")
+    if protocolo_novo:
+        registrado = bd.listar_ocorrencias(texto=protocolo_novo)
+        st.success(f"✅ Alerta enviado. Protocolo **{protocolo_novo}**.")
+        if not registrado.empty:
+            linha_nova = registrado.iloc[0]
+            regra_nova = NIVEIS[linha_nova["nivel"]]
+            st.markdown(
+                etiqueta_nivel(
+                    linha_nova["nivel"],
+                    f"— acionamento em ate <b>{regra_nova['sla_acionamento_min']} "
+                    f"min</b>",
+                ),
+                unsafe_allow_html=True,
+            )
+            st.caption(f"Criterio aplicado: {linha_nova['motivo_nivel']}")
+            if linha_nova["nivel"] == "P1":
+                orgao_p1 = CATEGORIAS.get(
+                    linha_nova["categoria"], {}).get("orgao", "Defesa Civil")
+                st.error(
+                    f"🚨 Classificado como EMERGENCIA. **Se ha risco de vida, "
+                    f"ligue agora para {orgao_p1} — {ORGAOS.get(orgao_p1, '199')}.**"
+                )
+        st.divider()
+
     passo_gps, passo_mapa = st.columns([1, 1.6])
 
     with passo_gps:
@@ -234,7 +272,8 @@ with paginas["🆘 Registrar alerta"]:
                                 use_container_width=True):
                     bd.confirmar_ocorrencia(int(vizinha["id"]),
                                             comentario="Confirmado no registro")
-                    st.success(f"Confirmacao registrada em {vizinha['protocolo']}.")
+                    st.session_state["confirmou_protocolo"] = vizinha["protocolo"]
+                    st.session_state.pop("ultimo_protocolo", None)
                     st.rerun()
 
     st.divider()
@@ -294,29 +333,12 @@ with paginas["🆘 Registrar alerta"]:
                 foto=salvar_foto(foto), emergencia=emergencia,
                 pessoas_em_risco=pessoas_em_risco,
             )
-            st.session_state.update(ponto=None, precisao=None, origem="Mapa")
-
-            # Mostra ao cidadao o resultado da triagem automatica
-            registrado = bd.listar_ocorrencias(texto=protocolo)
-            st.success(f"✅ Alerta enviado. Protocolo **{protocolo}**.")
-            if not registrado.empty:
-                linha = registrado.iloc[0]
-                regra = NIVEIS[linha["nivel"]]
-                st.markdown(
-                    etiqueta_nivel(
-                        linha["nivel"],
-                        f"— acionamento em ate <b>{regra['sla_acionamento_min']} "
-                        f"min</b>",
-                    ),
-                    unsafe_allow_html=True,
-                )
-                st.caption(f"Criterio aplicado: {linha['motivo_nivel']}")
-                if linha["nivel"] == "P1":
-                    orgao = CATEGORIAS[categoria]["orgao"]
-                    st.error(
-                        f"🚨 Classificado como EMERGENCIA. **Se ha risco de vida, "
-                        f"ligue agora para {orgao} — {ORGAOS.get(orgao, '199')}.**"
-                    )
+            st.session_state.update(ponto=None, precisao=None, origem="Mapa",
+                                    ultimo_protocolo=protocolo)
+            st.session_state.pop("confirmou_protocolo", None)
+            # Recarrega para a barra lateral recontar. O aviso de sucesso e
+            # desenhado no topo da aba, onde sobrevive ao rerun.
+            st.rerun()
 
 
 # ===========================================================================

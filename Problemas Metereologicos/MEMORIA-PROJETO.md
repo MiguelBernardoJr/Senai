@@ -1,7 +1,7 @@
 # MEMÓRIA DO PROJETO — Alerta Cidadão
 
 > Estado atual, decisões vigentes e pendências. **Sempre anexado.**
-> Última atualização: 19/09/2026 · Fase: **v1 no ar, 146 testes, 5 correcoes**
+> Última atualização: 19/09/2026 · Fase: **v1 no ar, 150 testes, 6 correcoes, fluxo do cidadao verificado no navegador**
 
 ## Situação
 
@@ -21,7 +21,7 @@ Projeto na pasta `Problemas Metereologicos/`, publicado em
 - `servicos.py` — GPS, foto (Pillow), mapa Folium com cluster / mapa de calor /
   satélite e texto de despacho com telefone do órgão.
 - `app.py` — interface Streamlit.
-- `tests/` — **146 testes, todos passando** (`python -m pytest`).
+- `tests/` — **150 testes, todos passando** (`python -m pytest`).
 
 ## Como a suíte de testes está organizada
 
@@ -30,7 +30,8 @@ Projeto na pasta `Problemas Metereologicos/`, publicado em
 | `test_classificacao.py` | Os 12 discriminadores um a um, teto do escalonamento, SLA e formatação de prazo | 40 |
 | `test_database.py` | Protocolo, fluxo de status, confirmação, reclassificação, score, filtros, fila, proximidade, painel e migração | 39 |
 | `test_servicos.py` | Despacho, links, foto, mapa, o NaN do pandas e o escape de HTML | 54 |
-| `test_fluxo_completo.py` | Ciclo de vida ponta a ponta, escalonamento, banco vazio e contaminacao por NaN | 13 |
+| `test_fluxo_completo.py` | Ciclo de vida ponta a ponta, escalonamento, banco vazio e contaminação por NaN | 13 |
+| `test_concorrencia.py` | Envios simultâneos, protocolo único, leitura durante escrita, confirmações em massa | 4 |
 
 `tests/conftest.py` dá a cada teste um `.db` temporário próprio (trocando
 `database.CAMINHO_BANCO`) — nenhum teste encosta no `data/ocorrencias.db` real.
@@ -44,6 +45,7 @@ escalonamento sem desmontar `inserir_ocorrencia()`.
 | B-01 | `criar_tabelas()` | Os índices eram criados **antes** de `_migrar()`. Num banco de versão anterior, `CREATE INDEX ... ON ocorrencias(emergencia)` falhava com *"no such column"* e a migração nunca rodava — o app não subia, exatamente no caso que a migração existe para resolver. | Tabelas → migração → índices, nessa ordem. |
 | B-02 | `listar_historico()` | `ORDER BY criado_em DESC` sem desempate. Como `_agora()` tem precisão de segundos, abrir e acionar no mesmo segundo fazia o histórico aparecer fora de ordem na tela. | `ORDER BY h.criado_em DESC, h.id DESC`. |
 | B-03 | `subir_nivel()` | `subir_nivel("P1")` devolvia `"P2"` — **rebaixava** a emergência. Hoje `aplicar()` não chega a chamar com P1 (há guarda no chamador), mas a função é pública e não pode depender de quem a chama. | Guarda `if indice <= teto: return nivel`. |
+| B-06 | `app.py`, aba Registrar alerta | Dois defeitos de retorno ao cidadão. (1) Ao confirmar um alerta duplicado, `st.success()` era seguido de `st.rerun()` — que descarta a tela em andamento, então a mensagem **nunca aparecia**: a confirmação era gravada, mas em silêncio. (2) A barra lateral é renderizada antes do bloco de envio, então o contador ficava uma interação atrasado e mostrava **"Alertas registrados: 0"** logo após o primeiro envio. | O envio e a confirmação terminam em `st.rerun()` (que atualiza a lateral) e o aviso é desenhado **no topo da aba**, a partir de `session_state`, onde sobrevive ao rerun. |
 | B-05 | `servicos._html_popup()` e `app.py` | **Injeção de HTML.** O popup do mapa é montado por f-string e o relato, a referência e a categoria entravam **sem escape**. Um cidadão registrando `<img src=x onerror=...>` no campo de referência teria o código executado no navegador de quem está atendendo o chamado — `<script>` inserido por `innerHTML` não roda, mas um atributo `onerror` sim. Atingia também o `motivo_nivel` na Central, que carrega a justificativa digitada na reclassificação. | `servicos.texto_html()` (escape + `texto_campo`) em tudo que vem do registro. O despacho **não** é escapado: é texto puro para WhatsApp/rádio. |
 | B-04 | `servicos._foto_em_base64()` e `app._cartao()` | **Derrubava o app em uso real.** Enquanto nenhum alerta tinha foto, a coluna era toda NULL e o pandas devolvia `None` — as guardas `if linha["foto"]` funcionavam. Bastou a **primeira foto** para a coluna virar texto e os NULL dos outros alertas virarem `NaN` (float, e **truthy**): a guarda passava e `PASTA_BASE / NaN` estourava `TypeError`, quebrando o mapa e o cartão da Central **para todos os alertas**. Os mesmos `or` de fallback em referência, bairro, autor, contato, descrição e órgão acionado imprimiriam `nan` na tela. | `config.texto_campo()`, usado em `classificacao`, `servicos` e `app`. |
 
@@ -56,12 +58,27 @@ verdade**, e só aparecia depois que alguém enviasse a primeira foto.
 
 ## Pendências
 
-- [ ] Testar o GPS em celular real. Exige HTTPS — só dá para validar depois de
-      publicar no Streamlit Cloud ou por túnel `ngrok`.
+- [ ] Testar o GPS em **celular real**. O caminho do código já está verificado:
+      o navegador foi alimentado com uma posição simulada e o fluxo completo
+      (captura → precisão exibida → envio → protocolo → triagem) funcionou.
+      Falta só o aparelho de verdade, que exige HTTPS — Streamlit Cloud ou `ngrok`.
 - [ ] Decidir se o projeto vai para o Streamlit Cloud antes da apresentação.
-- [ ] `app.py` não tem teste automatizado (é tela; foi verificado no navegador).
-      Se a interface crescer, vale extrair as funções de montagem para um módulo
-      testável.
+- [ ] `app.py` não tem teste automatizado. É tela, e foi verificada no navegador
+      com Playwright: as 5 abas, o fluxo do cidadão de ponta a ponta (GPS
+      simulado, validações, envio, duplicidade, confirmação) e a seleção de
+      linha no Mapa geral. Se a interface crescer, vale extrair as funções de
+      montagem para um módulo testável.
+
+## Investigado e descartado
+
+**Concorrência na geração do protocolo.** Suspeita de que dois cidadãos enviando
+ao mesmo tempo pudessem receber o mesmo número. Testado com 120 envios
+simultâneos (12 threads) e com leitura concorrente durante as escritas: **zero
+colisões, zero erros, nenhum alerta sem protocolo**. O protocolo vem do
+`lastrowid` do próprio INSERT, e o SQLite serializa escritas — o `timeout`
+padrão de 5 s do `sqlite3` absorve a disputa. Também comparado `journal_mode`
+`delete` (atual) contra `WAL`: sem diferença de erros, então **não** foi trocado.
+Nenhuma mudança de código; a garantia ficou fixada em `test_concorrencia.py`.
 
 ## Decisões vigentes
 
@@ -79,7 +96,8 @@ verdade**, e só aparecia depois que alguém enviasse a primeira foto.
 | D-10 | Cidade padrão do mapa: **Pirapozinho/SP**, `CENTRO_PADRAO = (-22.2747, -51.5019)`. | 19/09/2026 |
 | D-11 | `config.texto_campo()` é a **única** porta para ler campo anulável vindo do banco. Mora em `config.py` (a base que todos importam) e detecta NaN com `valor != valor`, para não arrastar o pandas para dentro do módulo base. Nenhum `or` cru em campo que pode ser NULL. | 19/09/2026 |
 | D-12 | Dado de terceiro que entra em **HTML** passa por `servicos.texto_html()` (escape). Dado que entra em **texto puro** (despacho de WhatsApp/rádio) passa por `config.texto_campo()`, sem escape — `&amp;` numa mensagem de rádio seria erro. | 19/09/2026 |
-| D-13 | Identificadores, comentários e chaves de banco sem acento; texto de tela com acento. Evita problema de encoding em terminal Windows sem prejudicar a apresentação. | 19/09/2026 |
+| D-13 | Ação que muda o banco termina em `st.rerun()` e o aviso correspondente é desenhado **no topo da aba**, lido de `session_state`. `st.success()` escrito antes de um `st.rerun()` nunca aparece. | 19/09/2026 |
+| D-14 | Identificadores, comentários e chaves de banco sem acento; texto de tela com acento. Evita problema de encoding em terminal Windows sem prejudicar a apresentação. | 19/09/2026 |
 
 ## Riscos conhecidos
 

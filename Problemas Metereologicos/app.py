@@ -39,6 +39,7 @@ from config import (
     texto_campo,
 )
 from servicos import (
+    texto_html,
     capturar_gps,
     criar_mapa,
     link_google_maps,
@@ -341,9 +342,11 @@ if perfil == "Defesa Civil":
             st.markdown(
                 etiqueta_nivel(
                     linha["nivel"],
+                    # motivo_nivel carrega a justificativa digitada na
+                    # reclassificacao manual - texto de gente, entra escapado.
                     f"<span style='color:#666;font-size:12px'>"
-                    f"triagem {linha['origem_nivel'].lower()} · "
-                    f"{linha['motivo_nivel']}</span>",
+                    f"triagem {texto_html(linha['origem_nivel']).lower()} · "
+                    f"{texto_html(linha['motivo_nivel'])}</span>",
                 ),
                 unsafe_allow_html=True,
             )

@@ -1,7 +1,7 @@
 # MEMÓRIA DO PROJETO — Alerta Cidadão
 
 > Estado atual, decisões vigentes e pendências. **Sempre anexado.**
-> Última atualização: 19/09/2026 · Fase: **v1 no ar, 129 testes, 4 bugs corrigidos**
+> Última atualização: 19/09/2026 · Fase: **v1 no ar, 146 testes, 5 correcoes**
 
 ## Situação
 
@@ -21,7 +21,7 @@ Projeto na pasta `Problemas Metereologicos/`, publicado em
 - `servicos.py` — GPS, foto (Pillow), mapa Folium com cluster / mapa de calor /
   satélite e texto de despacho com telefone do órgão.
 - `app.py` — interface Streamlit.
-- `tests/` — **129 testes, todos passando** (`python -m pytest`).
+- `tests/` — **146 testes, todos passando** (`python -m pytest`).
 
 ## Como a suíte de testes está organizada
 
@@ -29,7 +29,7 @@ Projeto na pasta `Problemas Metereologicos/`, publicado em
 |---|---|---|
 | `test_classificacao.py` | Os 12 discriminadores um a um, teto do escalonamento, SLA e formatação de prazo | 40 |
 | `test_database.py` | Protocolo, fluxo de status, confirmação, reclassificação, score, filtros, fila, proximidade, painel e migração | 39 |
-| `test_servicos.py` | Texto de despacho, links, redimensionamento de foto, mapa e o NaN do pandas | 37 |
+| `test_servicos.py` | Despacho, links, foto, mapa, o NaN do pandas e o escape de HTML | 54 |
 | `test_fluxo_completo.py` | Ciclo de vida ponta a ponta, escalonamento, banco vazio e contaminacao por NaN | 13 |
 
 `tests/conftest.py` dá a cada teste um `.db` temporário próprio (trocando
@@ -44,7 +44,10 @@ escalonamento sem desmontar `inserir_ocorrencia()`.
 | B-01 | `criar_tabelas()` | Os índices eram criados **antes** de `_migrar()`. Num banco de versão anterior, `CREATE INDEX ... ON ocorrencias(emergencia)` falhava com *"no such column"* e a migração nunca rodava — o app não subia, exatamente no caso que a migração existe para resolver. | Tabelas → migração → índices, nessa ordem. |
 | B-02 | `listar_historico()` | `ORDER BY criado_em DESC` sem desempate. Como `_agora()` tem precisão de segundos, abrir e acionar no mesmo segundo fazia o histórico aparecer fora de ordem na tela. | `ORDER BY h.criado_em DESC, h.id DESC`. |
 | B-03 | `subir_nivel()` | `subir_nivel("P1")` devolvia `"P2"` — **rebaixava** a emergência. Hoje `aplicar()` não chega a chamar com P1 (há guarda no chamador), mas a função é pública e não pode depender de quem a chama. | Guarda `if indice <= teto: return nivel`. |
+| B-05 | `servicos._html_popup()` e `app.py` | **Injeção de HTML.** O popup do mapa é montado por f-string e o relato, a referência e a categoria entravam **sem escape**. Um cidadão registrando `<img src=x onerror=...>` no campo de referência teria o código executado no navegador de quem está atendendo o chamado — `<script>` inserido por `innerHTML` não roda, mas um atributo `onerror` sim. Atingia também o `motivo_nivel` na Central, que carrega a justificativa digitada na reclassificação. | `servicos.texto_html()` (escape + `texto_campo`) em tudo que vem do registro. O despacho **não** é escapado: é texto puro para WhatsApp/rádio. |
 | B-04 | `servicos._foto_em_base64()` e `app._cartao()` | **Derrubava o app em uso real.** Enquanto nenhum alerta tinha foto, a coluna era toda NULL e o pandas devolvia `None` — as guardas `if linha["foto"]` funcionavam. Bastou a **primeira foto** para a coluna virar texto e os NULL dos outros alertas virarem `NaN` (float, e **truthy**): a guarda passava e `PASTA_BASE / NaN` estourava `TypeError`, quebrando o mapa e o cartão da Central **para todos os alertas**. Os mesmos `or` de fallback em referência, bairro, autor, contato, descrição e órgão acionado imprimiriam `nan` na tela. | `config.texto_campo()`, usado em `classificacao`, `servicos` e `app`. |
+
+B-05 é o único achado de segurança: o app é alimentado por qualquer cidadão e lido pela Defesa Civil, então texto de terceiro que vira HTML precisa de escape por princípio, não por sintoma observado.
 
 B-01, B-02 e B-03 não mudavam comportamento visível: B-03 era inalcançável e
 B-01 só atinge quem já tinha um `.db` antigo. Foram corrigidos porque são
@@ -75,7 +78,8 @@ verdade**, e só aparecia depois que alguém enviasse a primeira foto.
 | D-09 | `atualizar_status` carimba `resolvido_em` apenas em **"Resolvido"**; "Improcedente" encerra sem entrar no tempo médio de resolução. | 19/09/2026 |
 | D-10 | Cidade padrão do mapa: **Pirapozinho/SP**, `CENTRO_PADRAO = (-22.2747, -51.5019)`. | 19/09/2026 |
 | D-11 | `config.texto_campo()` é a **única** porta para ler campo anulável vindo do banco. Mora em `config.py` (a base que todos importam) e detecta NaN com `valor != valor`, para não arrastar o pandas para dentro do módulo base. Nenhum `or` cru em campo que pode ser NULL. | 19/09/2026 |
-| D-12 | Identificadores, comentários e chaves de banco sem acento; texto de tela com acento. Evita problema de encoding em terminal Windows sem prejudicar a apresentação. | 19/09/2026 |
+| D-12 | Dado de terceiro que entra em **HTML** passa por `servicos.texto_html()` (escape). Dado que entra em **texto puro** (despacho de WhatsApp/rádio) passa por `config.texto_campo()`, sem escape — `&amp;` numa mensagem de rádio seria erro. | 19/09/2026 |
+| D-13 | Identificadores, comentários e chaves de banco sem acento; texto de tela com acento. Evita problema de encoding em terminal Windows sem prejudicar a apresentação. | 19/09/2026 |
 
 ## Riscos conhecidos
 
@@ -85,6 +89,7 @@ verdade**, e só aparecia depois que alguém enviasse a primeira foto.
 | Disco do Streamlit Cloud é efêmero: `.db` e fotos somem a cada redeploy. | Aceitável para a apresentação. Para uso real, trocar SQLite por PostgreSQL e as fotos por um bucket — `database.py` está isolado para que a troca fique em um arquivo só. |
 | Folium carrega o Leaflet de CDN. Sem internet, o mapa não desenha. | Limitação conhecida da biblioteca; não afeta uso normal com rede. |
 | Mudar peso, ordem de discriminador ou SLA reclassifica **todo** o histórico (é o desenho — D-01). | Os 40 testes de `test_classificacao.py` quebram se a tabela de triagem mudar sem intenção. Rodar `python -m pytest` antes de todo commit. |
+| Novo trecho de HTML montado por f-string com dado do registro reabre o B-05. | `servicos.texto_html()` e os testes parametrizados de `test_servicos.py`, que tentam injetar em cada campo do popup. |
 | Campo anulável lido direto do DataFrame com `or` ou `if` volta a vazar `NaN` (B-04). | `config.texto_campo()` e os testes de `test_fluxo_completo.py` que inserem um alerta com foto e outro sem. |
 | Demonstração com banco vazio não mostra nada da triagem. | Popular a base antes de apresentar (ver pendência sobre `gerar_dados_exemplo.py`). |
 

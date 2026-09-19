@@ -285,3 +285,65 @@ def test_popup_nao_escreve_nan():
 ])
 def test_texto_campo_normaliza_o_que_vem_do_dataframe(valor, esperado):
     assert config.texto_campo(valor, "padrao") == esperado
+
+
+# ---------------------------------------------------------------------------
+# Texto do cidadao entrando em HTML
+# ---------------------------------------------------------------------------
+# O popup do mapa e montado com f-string. Relato, referencia e bairro sao
+# digitados por qualquer pessoa e sao lidos no navegador de quem atende o
+# chamado -- entao precisam entrar escapados.
+
+XSS = "<img src=x onerror=alert(1)>"
+
+
+@pytest.mark.parametrize("campo", ["descricao", "referencia", "categoria",
+                                   "protocolo", "status", "severidade"])
+def test_popup_escapa_o_texto_do_registro(campo):
+    html = servicos._html_popup(alerta(**{campo: XSS}))
+    assert "<img" not in html          # a tag nao se forma
+    assert "&lt;img" in html           # aparece como texto
+
+
+def test_popup_nao_deixa_script_passar():
+    html = servicos._html_popup(alerta(descricao="<script>alert('x')</script>"))
+    assert "<script>" not in html
+    assert "&lt;script&gt;" in html
+
+
+def test_popup_preserva_o_html_proprio_do_cartao():
+    """O escape nao pode quebrar a formatacao que o proprio popup monta."""
+    html = servicos._html_popup(alerta())
+    assert '<div style="font-family' in html
+    assert "OC2026-00007" in html
+
+
+def test_popup_mostra_acento_e_aspas_sem_estragar():
+    html = servicos._html_popup(alerta(descricao='Água subiu 1,5 m na "Vila Nova"'))
+    assert "Água subiu" in html
+    assert "&quot;Vila Nova&quot;" in html
+
+
+@pytest.mark.parametrize("valor,esperado", [
+    (XSS, "&lt;img src=x onerror=alert(1)&gt;"),
+    ('aspas "duplas"', "aspas &quot;duplas&quot;"),
+    ("e comercial & cia", "e comercial &amp; cia"),
+    (float("nan"), "padrao"),
+    (None, "padrao"),
+    ("", "padrao"),
+])
+def test_texto_html(valor, esperado):
+    assert servicos.texto_html(valor, "padrao") == esperado
+
+
+def test_despacho_nao_escapa_nada():
+    """O despacho e texto puro para WhatsApp/radio: & vira &amp; seria erro."""
+    texto = servicos.texto_despacho(alerta(descricao="agua & lama"))
+    assert "agua & lama" in texto
+    assert "&amp;" not in texto
+
+
+def test_mapa_com_texto_hostil_continua_montando():
+    tabela = pd.DataFrame([alerta(descricao=XSS, referencia=XSS)])
+    html = servicos.criar_mapa(CENTRO_PADRAO, 14, dados=tabela)._repr_html_()
+    assert "OC2026-00007" in html

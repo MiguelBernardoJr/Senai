@@ -65,9 +65,10 @@ verdade**, e só aparecia depois que alguém enviasse a primeira foto.
       (captura → precisão exibida → envio → protocolo → triagem) funcionou.
       Falta só o aparelho de verdade, que exige HTTPS — Streamlit Cloud ou `ngrok`.
 - [ ] Publicar no Streamlit Cloud (exigência do professor: entregar o link).
-      Pasta renomeada para `Problemas-Meteorologicos` porque o Cloud falha com
-      espaço no caminho. Falta escolher a branch de deploy e resolver como o
-      banco, que nasce vazio a cada deploy, mostra dados na primeira visita.
+      Preparado: pasta sem espaço no nome (o Cloud falha com espaço), branch
+      mergeada no `main`, e botão **"Popular com dados de exemplo"** na barra
+      lateral para o banco vazio de cada deploy. Falta o deploy em si, que
+      exige login na conta GitHub do Miguel.
 - [ ] `app.py` não tem teste automatizado. É tela, e foi verificada no navegador
       com Playwright: as 5 abas, o fluxo do cidadão de ponta a ponta (GPS
       simulado, validações, envio, duplicidade, confirmação) e a seleção de
@@ -102,7 +103,8 @@ Nenhuma mudança de código; a garantia ficou fixada em `test_concorrencia.py`.
 | D-11 | `config.texto_campo()` é a **única** porta para ler campo anulável vindo do banco. Mora em `config.py` (a base que todos importam) e detecta NaN com `valor != valor`, para não arrastar o pandas para dentro do módulo base. Nenhum `or` cru em campo que pode ser NULL. | 19/09/2026 |
 | D-12 | Dado de terceiro que entra em **HTML** passa por `servicos.texto_html()` (escape). Dado que entra em **texto puro** (despacho de WhatsApp/rádio) passa por `config.texto_campo()`, sem escape — `&amp;` numa mensagem de rádio seria erro. | 19/09/2026 |
 | D-13 | Ação que muda o banco termina em `st.rerun()` e o aviso correspondente é desenhado **no topo da aba**, lido de `session_state`. `st.success()` escrito antes de um `st.rerun()` nunca aparece. | 19/09/2026 |
-| D-14 | Identificadores, comentários e chaves de banco sem acento; texto de tela com acento. Evita problema de encoding em terminal Windows sem prejudicar a apresentação. | 19/09/2026 |
+| D-14 | O botão **"Popular com dados de exemplo"** só aparece com o banco vazio. Some no primeiro registro, para não virar botão de duplicar dados por engano. O disco do Streamlit Cloud é efêmero, então cada deploy começa sem alertas e o mapa abriria vazio. | 19/09/2026 |
+| D-15 | Identificadores, comentários e chaves de banco sem acento; texto de tela com acento. Evita problema de encoding em terminal Windows sem prejudicar a apresentação. | 19/09/2026 |
 
 ## Riscos conhecidos
 

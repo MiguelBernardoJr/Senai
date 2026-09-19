@@ -107,6 +107,26 @@ with st.sidebar:
 
     st.metric("Alertas registrados", numeros["total"])
 
+    # So aparece com o banco vazio. E o caso da primeira visita ao app
+    # publicado: o disco do Streamlit Cloud e efemero, entao cada deploy
+    # comeca sem nenhum alerta e o mapa abriria vazio. Some assim que existe
+    # o primeiro registro, para nao virar botao de duplicar dados por engano.
+    if numeros["total"] == 0:
+        st.divider()
+        st.caption(
+            "Banco vazio. Para conhecer o sistema, carregue alertas de "
+            "demonstracao: 2 por categoria, cobrindo os quatro niveis de "
+            "triagem."
+        )
+        if st.button("Popular com dados de exemplo", use_container_width=True):
+            # Import tardio: o app nao depende do script de demonstracao
+            # para subir, so quando o botao e realmente usado.
+            from gerar_dados_exemplo import gerar_cobertura
+
+            with st.spinner("Gerando alertas de demonstracao..."):
+                gerar_cobertura()
+            st.rerun()
+
     st.divider()
     with st.expander("Como funciona a classificacao"):
         for nivel in ORDEM_NIVEIS:

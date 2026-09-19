@@ -566,18 +566,82 @@ with paginas["🗺️ Mapa geral"]:
 
     st.caption(f"{len(dados)} evento(s) encontrado(s).")
 
-    centro = (
-        (dados["latitude"].mean(), dados["longitude"].mean())
-        if not dados.empty else CENTRO_PADRAO
-    )
-    mapa_geral = criar_mapa(
-        centro=centro, zoom=ZOOM_PADRAO if dados.empty else 13,
-        dados=dados, agrupar=agrupar, mapa_calor=calor, colorir_por=colorir,
-    )
-    st_folium(mapa_geral, key="mapa_geral", height=520,
-              use_container_width=True, returned_objects=[])
+    # A tabela fica DEPOIS do mapa na tela, mas a escolha dela precisa ser lida
+    # ANTES: o st.dataframe guarda a linha selecionada em session_state e o
+    # rerun que o clique dispara ja entrega o valor aqui em cima.
+    # A chave carrega um numero de versao para o botao "Limpar" poder zerar a
+    # selecao criando um widget novo - state de widget nao se apaga na mao.
+    versao_tabela = st.session_state.get("versao_tabela_mapa", 0)
+    chave_tabela = f"tabela_mapa_geral_{versao_tabela}"
 
-    with st.expander("Ver lista em tabela"):
+    bruto = st.session_state.get(chave_tabela)
+    selecao = getattr(bruto, "selection", None)
+    if selecao is None and isinstance(bruto, dict):
+        selecao = bruto.get("selection")
+    escolhidas = list((selecao or {}).get("rows") or [])
+
+    evento = None
+    if escolhidas and not dados.empty:
+        posicao = escolhidas[0]
+        # Trocar um filtro pode encurtar a lista e deixar a posicao no vazio.
+        if 0 <= posicao < len(dados):
+            evento = dados.iloc[posicao]
+
+    if evento is not None:
+        # Selecionou: o mapa vai para cima do evento, bem de perto.
+        centro = (float(evento["latitude"]), float(evento["longitude"]))
+        zoom_mapa = 17
+        destaque = centro
+    else:
+        centro = (
+            (dados["latitude"].mean(), dados["longitude"].mean())
+            if not dados.empty else CENTRO_PADRAO
+        )
+        zoom_mapa = ZOOM_PADRAO if dados.empty else 13
+        destaque = None
+
+    if evento is not None:
+        faixa, botao = st.columns([5, 1])
+        local = " · ".join(
+            parte for parte in (evento.get("referencia"), evento.get("bairro"))
+            if parte
+        ) or "sem referencia"
+        faixa.info(
+            f"📍 **{evento['protocolo']}** — {evento['categoria']} · "
+            f"{evento['nivel']} {evento['nivel_nome']} · {evento['status']}  \n"
+            f"{local} · {evento['latitude']:.6f}, {evento['longitude']:.6f}",
+            icon="🎯",
+        )
+        botao.link_button(
+            "Abrir no Maps",
+            link_google_maps(evento["latitude"], evento["longitude"]),
+            use_container_width=True,
+        )
+        if botao.button("Limpar selecao", use_container_width=True,
+                        key="limpar_selecao_mapa"):
+            st.session_state["versao_tabela_mapa"] = versao_tabela + 1
+            st.rerun()
+    else:
+        st.caption(
+            "Dica: clique em uma linha da tabela abaixo para centralizar o mapa "
+            "no local daquele evento."
+        )
+
+    mapa_geral = criar_mapa(
+        centro=centro, zoom=zoom_mapa,
+        dados=dados, agrupar=agrupar, mapa_calor=calor, colorir_por=colorir,
+        ponto_selecionado=destaque, raio_precisao=60,
+    )
+    # center/zoom so vao quando ha selecao: sem isso o mapa voltaria para o
+    # ponto fixo a cada rerun e o usuario nao conseguiria navegar sozinho.
+    st_folium(mapa_geral, key="mapa_geral", height=520,
+              use_container_width=True, returned_objects=[],
+              center=centro if evento is not None else None,
+              zoom=zoom_mapa if evento is not None else None)
+
+    # expanded quando ha selecao: senao o expander fecharia no rerun do clique
+    # e o usuario perderia a lista bem na hora em que esta usando ela.
+    with st.expander("Ver lista em tabela", expanded=evento is not None):
         if dados.empty:
             st.info("Nenhum registro para os filtros aplicados.")
         else:
@@ -586,7 +650,11 @@ with paginas["🗺️ Mapa geral"]:
                 "severidade", "status", "situacao_sla", "confirmacoes",
                 "bairro", "referencia", "origem_coordenada", "criado_em",
             ]
-            st.dataframe(dados[colunas], use_container_width=True, hide_index=True)
+            st.caption("Clique na linha para ver o evento no mapa acima.")
+            st.dataframe(
+                dados[colunas], use_container_width=True, hide_index=True,
+                key=chave_tabela, on_select="rerun", selection_mode="single-row",
+            )
             st.download_button(
                 "⬇️ Exportar CSV",
                 data=dados.to_csv(index=False).encode("utf-8-sig"),

@@ -111,6 +111,17 @@ def criar_tabelas() -> None:
                     ON DELETE CASCADE
             );
 
+            """
+        )
+
+    # A migracao vem ANTES dos indices de proposito: num banco criado por uma
+    # versao anterior a coluna 'emergencia' ainda nao existe, e o indice sobre
+    # ela abortaria criar_tabelas() antes de _migrar() ter chance de rodar.
+    _migrar()
+
+    with conectar() as conexao:
+        conexao.executescript(
+            """
             CREATE INDEX IF NOT EXISTS idx_ocorrencias_status
                 ON ocorrencias(status);
             CREATE INDEX IF NOT EXISTS idx_ocorrencias_categoria
@@ -123,7 +134,6 @@ def criar_tabelas() -> None:
                 ON confirmacoes(ocorrencia_id);
             """
         )
-    _migrar()
 
 
 def _migrar() -> None:
@@ -492,7 +502,9 @@ def listar_historico(ocorrencia_id: int | None = None) -> pd.DataFrame:
     if ocorrencia_id is not None:
         sql += " WHERE h.ocorrencia_id = ?"
         parametros.append(ocorrencia_id)
-    sql += " ORDER BY h.criado_em DESC"
+    # h.id desempata: criado_em tem precisao de segundos e dois
+    # eventos do mesmo segundo sairiam em ordem arbitraria.
+    sql += " ORDER BY h.criado_em DESC, h.id DESC"
 
     with conectar() as conexao:
         return pd.read_sql_query(sql, conexao, params=parametros)

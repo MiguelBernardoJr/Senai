@@ -134,6 +134,12 @@ def subir_nivel(nivel: str) -> str:
     """
     teto = ORDEM_NIVEIS.index(TETO_ESCALONAMENTO)
     indice = ORDEM_NIVEIS.index(nivel)
+    if indice <= teto:
+        # P1 e o proprio teto ja estao no topo do que o escalonamento alcanca.
+        # Sem esta guarda, subir_nivel("P1") devolvia "P2" - rebaixava a
+        # emergencia. Hoje aplicar() nao chega aqui com P1, mas a funcao e
+        # publica e nao pode depender de quem chama para se comportar.
+        return nivel
     return ORDEM_NIVEIS[max(indice - 1, teto)]
 
 
